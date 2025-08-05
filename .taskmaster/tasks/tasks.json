@@ -1,0 +1,380 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 15,
+        "title": "Setup Core Technical Infrastructure",
+        "description": "Establish the foundational technical architecture for the Automated RFP & Tender Response System including backend, database, and task queue components.",
+        "details": "1. Initialize Python/FastAPI project structure with async capabilities\n2. Set up PostgreSQL database for structured data storage\n3. Configure Vector database for embeddings storage\n4. Implement Celery/Redis for asynchronous task processing\n5. Create Docker containers for each component\n6. Set up development, staging, and production environments\n7. Implement logging and monitoring infrastructure\n8. Configure CI/CD pipelines for automated testing and deployment\n9. Establish security protocols including encryption for sensitive data\n10. Document system architecture and component interactions",
+        "testStrategy": "1. Unit tests for each core component\n2. Integration tests for database connections and task queue operations\n3. Load testing to verify scalability requirements (10,000+ daily portal checks)\n4. Security testing for data encryption and API endpoints\n5. Uptime monitoring to ensure 99.9% availability",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Establish Project Scaffolding",
+            "description": "Initialize the Python/FastAPI project structure with async capabilities, including directory layout, configuration files, and initial dependencies.",
+            "dependencies": [],
+            "details": "Set up version control (e.g., Git), create base folders (app, tests, configs), and install core libraries for async support.\n<info added on 2025-08-05T08:41:17.163Z>\nDatabase configuration and core models implemented:\n\n✅ Completed:\n- Async SQLAlchemy database setup with connection pooling\n- Five comprehensive data models covering the entire RFP workflow:\n  * TenderOpportunity - Main tender tracking with AI analysis fields\n  * Requirement - Individual RFP requirements with compliance scoring\n  * Proposal - Generated proposals with quality metrics\n  * WonBid - Historical winning bid analysis for pattern learning\n  * ProjectDocumentation - Semantic search index for project docs\n\n✅ Key Features Implemented:\n- Proper enum types for status management (TenderStatus, ProposalStatus, RiskLevel)\n- JSON fields for AI analysis results (red/green flags, competitive analysis)\n- Comprehensive indexing for performance (status+deadline, relevance scores)\n- Relationship mapping between opportunities, requirements, and proposals\n- Vector embedding storage for semantic search capability\n- Audit trails with created_at/updated_at timestamps\n\n✅ Technical Architecture:\n- Async session management with proper context managers\n- Database health checks and connection validation\n- Scalable model design supporting complex RFP workflows\n- Ready for vector database integration and semantic search\n</info added on 2025-08-05T08:41:17.163Z>",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Provision Relational Database",
+            "description": "Set up PostgreSQL database instance for structured data storage, including user, permissions, and schema initialization.",
+            "dependencies": [
+              "15.1"
+            ],
+            "details": "Configure database users, roles, and initial tables; set up connection pooling and environment-specific configs.\n<info added on 2025-08-05T08:47:35.802Z>\nDatabase provisioning and schema management completed:\n\n✅ Implemented Complete Database Infrastructure:\n- DatabaseMigrator class with full lifecycle management\n- Async database creation with PostgreSQL support\n- Comprehensive table creation from SQLAlchemy models\n- Health check system with connection validation\n- Sample data seeding for testing\n\n✅ Environment-Specific Configuration:\n- DatabaseSettings with Pydantic validation\n- Environment detection (development/testing/production/docker)\n- SSL configuration and connection security\n- Connection pooling with configurable parameters\n- Backup settings and maintenance configuration\n\n✅ CLI Database Management:\n- init_database.py script for complete setup\n- Command-line options (--seed, --skip-db, --skip-tables)\n- Interactive confirmation with detailed status reporting\n- Comprehensive error handling and logging\n- Health check reporting with schema information\n\n✅ Key Features:\n- Async/await support throughout\n- Connection pool management\n- Environment variable integration\n- Database schema introspection\n- Migration framework foundation\n- Production-ready configurations\n\nDatabase is now fully provisioned and ready for use. Next: Task 15.3 (Vector Database Integration).\n</info added on 2025-08-05T08:47:35.802Z>",
+            "status": "in-progress",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Integrate Vector Database",
+            "description": "Deploy and configure a vector database (e.g., Pinecone, Weaviate, or Qdrant) for embeddings storage and retrieval.",
+            "dependencies": [
+              "15.1"
+            ],
+            "details": "Set up API keys, define vector schemas, and connect to the backend for embedding operations.",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Set Up Async Task Queue",
+            "description": "Implement Celery with Redis (or RabbitMQ) for asynchronous task processing and background job management.",
+            "dependencies": [
+              "15.1"
+            ],
+            "details": "Configure broker and backend, define initial tasks, and ensure integration with FastAPI.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Containerize Components",
+            "description": "Create Dockerfiles and docker-compose configuration for backend, databases, and task queue components.",
+            "dependencies": [
+              "15.1",
+              "15.2",
+              "15.3",
+              "15.4"
+            ],
+            "details": "Ensure each service runs in an isolated container with appropriate networking and persistent storage.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 6,
+            "title": "Configure Environments",
+            "description": "Set up development, staging, and production environment configurations, including secrets management and environment variables.",
+            "dependencies": [
+              "15.5"
+            ],
+            "details": "Implement .env files, secret storage (e.g., Vault), and environment-specific overrides for all services.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 7,
+            "title": "Implement Logging and Monitoring",
+            "description": "Establish centralized logging and monitoring infrastructure for all core components.",
+            "dependencies": [
+              "15.5",
+              "15.6"
+            ],
+            "details": "Integrate tools like Prometheus, Grafana, and ELK stack; configure log aggregation and alerting.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 8,
+            "title": "Set Up CI/CD Pipelines",
+            "description": "Configure continuous integration and deployment pipelines for automated testing, building, and deployment.",
+            "dependencies": [
+              "15.5",
+              "15.6",
+              "15.7"
+            ],
+            "details": "Use tools like GitHub Actions, GitLab CI, or Jenkins; automate linting, testing, image builds, and deployments.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 9,
+            "title": "Apply Security Hardening",
+            "description": "Implement security best practices across all infrastructure components, including encryption, access controls, and vulnerability scanning.",
+            "dependencies": [
+              "15.5",
+              "15.6",
+              "15.7",
+              "15.8"
+            ],
+            "details": "Enforce HTTPS, enable database encryption, set up firewalls, and configure role-based access control.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 10,
+            "title": "Document Infrastructure Setup",
+            "description": "Create comprehensive documentation covering architecture, setup steps, environment variables, and operational procedures.",
+            "dependencies": [
+              "15.1",
+              "15.2",
+              "15.3",
+              "15.4",
+              "15.5",
+              "15.6",
+              "15.7",
+              "15.8",
+              "15.9"
+            ],
+            "details": "Use Markdown or a documentation generator; include diagrams, configuration samples, and troubleshooting guides.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 11,
+            "title": "Test and Validate Each Component",
+            "description": "Develop and execute initial unit and integration tests for backend, databases, vector DB, and task queue.",
+            "dependencies": [
+              "15.2",
+              "15.3",
+              "15.4",
+              "15.5",
+              "15.6",
+              "15.7",
+              "15.8",
+              "15.9"
+            ],
+            "details": "Verify connectivity, data integrity, async task execution, and container orchestration; document test results.",
+            "status": "pending",
+            "testStrategy": ""
+          },
+          {
+            "id": 12,
+            "title": "Integrate and Validate Cross-Component Workflows",
+            "description": "Test end-to-end workflows involving backend, databases, vector DB, and async tasks to ensure seamless integration.",
+            "dependencies": [
+              "15.11"
+            ],
+            "details": "Run integration scenarios, monitor logs, and validate data flow across all components; resolve any integration issues.",
+            "status": "pending",
+            "testStrategy": ""
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "title": "Develop Discovery & Monitoring Engine",
+        "description": "Build the system component that monitors procurement portals, parses feeds, and identifies relevant opportunities across multiple platforms.",
+        "details": "1. Implement web scrapers using Scrapy/BeautifulSoup for major procurement portals (UN Global Marketplace, UNGM, EU portals)\n2. Create RSS feed parsers and email alert processors\n3. Develop proxy rotation, user-agent management, and rate limiting mechanisms\n4. Build document processors for multiple formats (PDF, DOC, HTML, XML) using PyPDF2 and python-docx\n5. Implement authentication handlers for various portal login methods\n6. Create opportunity database schema with relevant metadata\n7. Develop real-time alert system for high-priority opportunities\n8. Implement deadline tracking and calendar management\n9. Create API endpoints for opportunity data access\n10. Develop monitoring dashboard for scraper performance",
+        "testStrategy": "1. Unit tests for each scraper and parser\n2. Integration tests with mock portal responses\n3. Performance testing to ensure handling of 10,000+ daily checks\n4. Validation of document parsing accuracy across formats\n5. End-to-end tests with sample procurement notices",
+        "priority": "high",
+        "dependencies": [
+          15
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Implement AI-Powered Relevance Filtering",
+        "description": "Develop the AI system that analyzes discovered opportunities and filters them based on relevance to company capabilities in multimedia, campaigns, and focus areas.",
+        "details": "1. Train NLP models to identify relevant opportunities based on company capabilities\n2. Implement classification algorithms for multimedia, campaign, and focus area detection\n3. Create scoring system for opportunity relevance (0-100%)\n4. Develop keyword and entity extraction for capability matching\n5. Build filtering rules based on company expertise areas (youth/climate/women/food/child/safety)\n6. Implement feedback loop for continuous model improvement\n7. Create API endpoints for relevance scoring\n8. Develop dashboard for relevance metrics and model performance\n9. Implement batch processing for historical opportunity analysis\n10. Create notification system for highly relevant opportunities",
+        "testStrategy": "1. Validation against manually classified opportunities\n2. Precision and recall metrics for relevance classification\n3. A/B testing of different filtering algorithms\n4. User feedback collection on relevance accuracy\n5. Periodic retraining and validation of models",
+        "priority": "high",
+        "dependencies": [
+          16
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Build Requirements Analysis Engine",
+        "description": "Create the AI system that extracts, categorizes, and analyzes requirements from RFP documents to generate structured requirement databases and compliance matrices.",
+        "details": "1. Implement NLP models for requirement extraction from documents\n2. Develop named entity recognition for technical specifications\n3. Create classification models for requirement categorization (mandatory vs. optional)\n4. Build confidence scoring system for requirement interpretation\n5. Implement multi-language support for international tenders\n6. Create structured database for extracted requirements\n7. Develop compliance matrix generation with mandatory/optional elements\n8. Implement risk assessment for compliance gaps\n9. Create deadline and milestone tracking with critical path analysis\n10. Build API endpoints for requirement data access",
+        "testStrategy": "1. Validation against manually extracted requirements\n2. Accuracy metrics for requirement classification\n3. Precision and recall for technical specification extraction\n4. Multi-language extraction testing\n5. End-to-end testing with sample RFP documents",
+        "priority": "high",
+        "dependencies": [
+          16,
+          17
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "Develop Competitive Intelligence Module",
+        "description": "Build the system component that analyzes competitors, historical bidding patterns, and generates win probability scores and pricing intelligence.",
+        "details": "1. Create database schema for competitor information and historical bids\n2. Implement web scrapers for public tender award databases\n3. Develop competitor website and portfolio analyzers\n4. Build social media and professional network monitoring tools\n5. Create algorithms for win probability scoring (0-100%)\n6. Implement pricing intelligence and market rate analysis\n7. Develop competitor strength/weakness analysis\n8. Create bidding strategy recommendation engine\n9. Build risk factor identification and mitigation suggestion system\n10. Develop API endpoints and dashboard for competitive intelligence",
+        "testStrategy": "1. Validation of competitor data accuracy\n2. Backtesting of win probability models against historical outcomes\n3. User feedback collection on intelligence usefulness\n4. Comparison of pricing recommendations against actual market rates\n5. Periodic validation of competitor analysis accuracy",
+        "priority": "medium",
+        "dependencies": [
+          16
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Create Proposal Template Library",
+        "description": "Develop a comprehensive library of customizable proposal templates, sections, and modules that serve as the foundation for automated proposal generation.",
+        "details": "1. Analyze successful past proposals to identify effective structures\n2. Create modular template system with customizable sections\n3. Develop templates for different proposal types (technical, financial, combined)\n4. Build section templates for executive summaries, technical approaches, team compositions, timelines, and budgets\n5. Implement multimedia integration points for video, animation, and data visualization\n6. Create campaign specialization modules (strategic planning, stakeholder engagement)\n7. Develop UN/NGO credibility sections highlighting LTA partnerships\n8. Build case study and reference database integration\n9. Implement template versioning and management system\n10. Create template selection algorithm based on RFP requirements",
+        "testStrategy": "1. Review of templates by proposal experts\n2. Validation against RFP compliance requirements\n3. User testing for template customization\n4. A/B testing of different template structures\n5. Periodic review and optimization based on win rates",
+        "priority": "medium",
+        "dependencies": [
+          18
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 21,
+        "title": "Implement AI-Powered Content Generation",
+        "description": "Develop the AI system that generates proposal content using GPT-4/Claude, including narrative sections, team selection, and budget generation.",
+        "details": "1. Integrate OpenAI GPT-4 and Anthropic Claude APIs\n2. Develop prompt engineering for proposal narrative generation\n3. Create team selection algorithms based on requirements and availability\n4. Implement dynamic budget generation based on scope, timeline, and market rates\n5. Build past performance integration with relevant case studies\n6. Develop content adaptation based on competitive intelligence\n7. Create content generation workflows with human review points\n8. Implement content quality scoring and improvement suggestions\n9. Build API endpoints for content generation requests\n10. Develop caching and optimization for cost-effective AI usage",
+        "testStrategy": "1. Human evaluation of generated content quality\n2. Compliance checking against RFP requirements\n3. Grammar, style, and consistency validation\n4. Technical accuracy verification\n5. A/B testing of different generation approaches",
+        "priority": "high",
+        "dependencies": [
+          18,
+          20
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "Build Automated Quality Assurance System",
+        "description": "Develop the system component that validates generated proposals for compliance, grammar, style, technical accuracy, and competitive differentiation.",
+        "details": "1. Implement automated compliance checking against RFP requirements\n2. Create grammar and style validation using NLP tools\n3. Develop consistency checking across proposal sections\n4. Build technical accuracy verification against company capabilities\n5. Implement competitive differentiation analysis\n6. Create executive review flagging for high-value opportunities\n7. Develop quality scoring system with improvement suggestions\n8. Build revision tracking and version control\n9. Implement approval workflows for proposal finalization\n10. Create API endpoints for quality assurance processes",
+        "testStrategy": "1. Validation against manually reviewed proposals\n2. Compliance accuracy metrics\n3. Grammar and style error detection rates\n4. User feedback on quality improvement suggestions\n5. Win rate correlation with quality scores",
+        "priority": "medium",
+        "dependencies": [
+          21
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 23,
+        "title": "Develop Submission & Tracking System",
+        "description": "Build the system component that automates proposal submission through various tender portals, handles document compilation, and tracks submission status.",
+        "details": "1. Implement portal integration for major procurement platforms\n2. Create document compilation in required formats (PDF, DOC)\n3. Develop electronic signature integration\n4. Build authorization workflows for submission approval\n5. Implement submission confirmation tracking\n6. Create follow-up management for clarifications\n7. Develop audit trail for submission activities\n8. Build backup submission methods and failure recovery\n9. Create performance tracking and success metrics\n10. Implement integration with project management systems for won contracts",
+        "testStrategy": "1. End-to-end testing with test portal environments\n2. Document format validation\n3. Submission confirmation verification\n4. Audit trail completeness checking\n5. Recovery testing for submission failures",
+        "priority": "high",
+        "dependencies": [
+          22
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 24,
+        "title": "Implement CRM and Calendar Integration",
+        "description": "Develop integrations with CRM systems for opportunity tracking and calendar systems for deadline management.",
+        "details": "1. Create API integrations with popular CRM platforms\n2. Implement opportunity data synchronization\n3. Build calendar integration for deadline management\n4. Develop notification systems (email, Slack, mobile)\n5. Create document management integration for tender archive\n6. Implement bidirectional data flow between systems\n7. Build user mapping and permission handling\n8. Create conflict resolution for data discrepancies\n9. Implement logging and audit trails for integrations\n10. Develop admin dashboard for integration management",
+        "testStrategy": "1. Integration testing with target CRM systems\n2. Calendar event creation and update verification\n3. Notification delivery testing\n4. Document synchronization validation\n5. Performance testing for data synchronization",
+        "priority": "medium",
+        "dependencies": [
+          16,
+          23
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 25,
+        "title": "Build Analytics and Reporting Dashboard",
+        "description": "Develop comprehensive analytics and reporting capabilities to track system performance, revenue metrics, and operational efficiency.",
+        "details": "1. Create data warehouse for system performance metrics\n2. Implement revenue tracking and forecasting\n3. Build win rate analysis by opportunity type\n4. Develop operational efficiency metrics dashboard\n5. Create discovery coverage reporting (portals monitored)\n6. Implement response rate tracking (proposals submitted)\n7. Build compliance rate analytics\n8. Create cost per opportunity calculations\n9. Implement trend analysis and predictive modeling\n10. Develop export capabilities for executive reporting",
+        "testStrategy": "1. Data accuracy validation\n2. Dashboard performance testing\n3. User acceptance testing with stakeholders\n4. Cross-checking of calculated metrics\n5. Periodic data integrity verification",
+        "priority": "medium",
+        "dependencies": [
+          23,
+          24
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 26,
+        "title": "System Optimization and Scaling",
+        "description": "Optimize the entire system for performance, implement scaling capabilities, and prepare for production deployment.",
+        "details": "1. Conduct comprehensive performance profiling\n2. Optimize database queries and indexing\n3. Implement caching strategies for frequent operations\n4. Create auto-scaling capabilities for infrastructure\n5. Optimize AI model usage and costs\n6. Implement advanced monitoring and alerting\n7. Conduct security audits and penetration testing\n8. Create disaster recovery procedures\n9. Develop system documentation and training materials\n10. Prepare phased rollout plan with feedback loops",
+        "testStrategy": "1. Load testing under production conditions\n2. Scalability verification for 10,000+ daily checks\n3. Performance benchmarking against requirements\n4. Security vulnerability assessment\n5. Disaster recovery simulation testing",
+        "priority": "high",
+        "dependencies": [
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 27,
+        "title": "Implement Semantic Search with Vector Database for Project Documentation",
+        "description": "Develop a semantic search system using a vector database to analyze and retrieve relevant UN/NGO project documentation, funding announcements, and requirement patterns, enabling improved opportunity discovery and matching.",
+        "details": "1. Select and provision a scalable vector database solution (e.g., FAISS, Pinecone, Weaviate, or OpenSearch with vector support) suitable for large-scale document storage and similarity search. 2. Use state-of-the-art sentence embedding models (e.g., SentenceTransformers 'all-MiniLM-L6-v2', OpenAI embeddings, or similar) to generate dense vector representations for all ingested documents, including project descriptions, funding announcements, and requirements. 3. Implement document chunking strategies (e.g., splitting by section, paragraph, or sliding window) to improve retrieval granularity and context preservation. 4. Store both raw documents and their embeddings in the vector database, ensuring metadata (source, date, type, language) is indexed for filtering. 5. Build a semantic search API that accepts user queries, generates query embeddings, and performs similarity search (e.g., cosine similarity or inner product) against the vector database to retrieve the most relevant documents. 6. Integrate post-processing with LLMs (optional) to summarize, rank, or extract key insights from retrieved results. 7. Ensure support for multi-language documents and implement access controls for sensitive data. 8. Document the architecture, data flows, and provide usage examples for downstream integration. Follow best practices for scalability, security, and privacy throughout the implementation.",
+        "testStrategy": "1. Populate the vector database with a representative sample of project documentation and funding announcements. 2. Validate embedding quality by manually inspecting nearest-neighbor results for a set of test queries, ensuring semantic relevance. 3. Measure retrieval accuracy using precision@k and recall@k metrics against a labeled benchmark set. 4. Test search performance and latency under realistic load conditions. 5. Verify multi-language support and metadata-based filtering. 6. Conduct security and privacy reviews for document storage and access. 7. Solicit user feedback from domain experts to iteratively refine search relevance and usability.",
+        "status": "pending",
+        "dependencies": [
+          15,
+          16,
+          18
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 28,
+        "title": "Develop Knowledge Base and Analysis System for Past Won Bids",
+        "description": "Design and implement a system to ingest, analyze, and structure historical successful proposals, extracting winning patterns, pricing strategies, technical approaches, and key success factors for automated reuse in future bids.",
+        "details": "1. Architect a scalable knowledge base using a graph or document-oriented database (e.g., Neo4j, MongoDB) to store structured representations of past winning bids, including metadata, pricing, technical solutions, and qualitative success factors. 2. Implement robust document ingestion pipelines leveraging NLP techniques (e.g., entity extraction, topic modeling, semantic similarity) to parse and normalize proposal documents. 3. Develop pattern mining algorithms to identify recurring themes, pricing models, and technical approaches correlated with bid success, using statistical analysis and machine learning (e.g., association rule mining, clustering, regression analysis). 4. Integrate cross-referencing with competitive intelligence and requirements analysis modules to contextualize findings (e.g., mapping win factors to competitor landscape and RFP requirements). 5. Build APIs and user interfaces for querying, visualizing, and exporting extracted knowledge, supporting both automated proposal generation and human review. 6. Ensure data privacy and compliance by anonymizing sensitive information and implementing access controls. 7. Document system architecture, data schemas, and provide guidelines for continuous knowledge base enrichment as new bids are won. Best practices include leveraging vector search for semantic retrieval, using explainable AI for pattern transparency, and supporting collaborative annotation workflows for domain experts.",
+        "testStrategy": "1. Validate ingestion accuracy by comparing parsed data against manually structured samples from a representative set of past winning proposals. 2. Evaluate pattern extraction quality by reviewing identified winning factors with subject matter experts and measuring recall/precision against known success cases. 3. Test integration with competitive intelligence and requirements modules to ensure correct cross-linking and contextualization. 4. Conduct user acceptance testing with proposal writers to confirm usability and actionable insights. 5. Perform security and privacy audits to verify compliance with data handling requirements. 6. Benchmark system performance for large-scale document ingestion and query response times.",
+        "status": "pending",
+        "dependencies": [
+          18,
+          19,
+          22,
+          27
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 29,
+        "title": "Implement AI-Powered RFP Evaluation with Red and Green Flags System",
+        "description": "Develop an AI-driven risk assessment module that automatically identifies red flags (dealbreakers, unrealistic requirements, low-profit opportunities) and green flags (strong win indicators, competitive advantages, high-value potential) in RFPs to support intelligent bid/no-bid decisions.",
+        "details": "1. Design a rule-based and machine learning hybrid system that analyzes extracted RFP requirements, opportunity metadata, and historical outcomes to flag risk and opportunity indicators. 2. Define and codify red flag criteria (e.g., missing mandatory requirements, excessive cost, misalignment with company capabilities, unrealistic timelines, low profit margins) and green flag criteria (e.g., strong past performance match, high win probability, strategic alignment, unique value proposition). 3. Integrate with the requirements analysis engine to leverage structured requirement data and compliance matrices. 4. Incorporate competitive intelligence and relevance filtering outputs to enhance flag accuracy. 5. Use NLP techniques to detect ambiguous or risky language and to match opportunity features against company strengths. 6. Implement a scoring and color-coding system (e.g., Red/Yellow/Green/Blue) for visual clarity, following industry best practices for proposal reviews[4]. 7. Provide an API and UI components for surfacing flagged issues and recommendations to users. 8. Enable feedback loops for users to confirm or override flags, supporting continuous model improvement. 9. Ensure explainability by surfacing reasons for each flag, referencing specific RFP sections or data points.",
+        "testStrategy": "1. Validate flagging accuracy against a curated set of historical RFPs with known outcomes, measuring precision and recall for both red and green flags. 2. Conduct user acceptance testing with proposal managers to assess the clarity and usefulness of flagged recommendations. 3. Perform end-to-end integration tests with the requirements analysis, relevance filtering, and competitive intelligence modules. 4. Review explainability outputs to ensure flagged reasons are transparent and actionable. 5. Collect user feedback on false positives/negatives and iterate on flagging logic. 6. Benchmark system performance to ensure real-time flagging for large RFP documents.",
+        "status": "pending",
+        "dependencies": [
+          17,
+          18,
+          19
+        ],
+        "priority": "high",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-05T07:10:46.087Z",
+      "updated": "2025-08-05T13:36:37.166Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

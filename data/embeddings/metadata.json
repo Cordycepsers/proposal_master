@@ -1,0 +1,121 @@
+{
+  "config": {
+    "dimension": 384,
+    "index_type": "IndexFlatIP",
+    "embedding_model": "all-MiniLM-L6-v2",
+    "metric": "cosine"
+  },
+  "documents": [
+    {
+      "id": "doc1",
+      "content": "Cloud infrastructure services with AWS and Azure support",
+      "metadata": {
+        "type": "proposal"
+      },
+      "created_at": "2025-08-05T15:35:44.745056",
+      "updated_at": "2025-08-05T15:35:44.745523",
+      "source": null,
+      "chunk_index": null,
+      "parent_document_id": null
+    },
+    {
+      "id": "doc2",
+      "content": "Machine learning and AI solutions for data analytics",
+      "metadata": {
+        "type": "tender"
+      },
+      "created_at": "2025-08-05T15:35:44.745533",
+      "updated_at": "2025-08-05T15:35:44.745533",
+      "source": null,
+      "chunk_index": null,
+      "parent_document_id": null
+    },
+    {
+      "id": "doc_1",
+      "content": "FastAPI is a modern web framework for building APIs with Python",
+      "metadata": {
+        "type": "technology"
+      },
+      "created_at": "2025-08-05T16:34:29.039978",
+      "updated_at": "2025-08-05T16:34:29.040004",
+      "source": null,
+      "chunk_index": null,
+      "parent_document_id": null
+    },
+    {
+      "id": "doc_2",
+      "content": "Machine learning models require vector databases for similarity search",
+      "metadata": {
+        "type": "ml"
+      },
+      "created_at": "2025-08-05T16:34:29.040017",
+      "updated_at": "2025-08-05T16:34:29.040018",
+      "source": null,
+      "chunk_index": null,
+      "parent_document_id": null
+    },
+    {
+      "id": "doc_3",
+      "content": "Proposal management systems help automate RFP responses",
+      "metadata": {
+        "type": "business"
+      },
+      "created_at": "2025-08-05T16:34:29.040022",
+      "updated_at": "2025-08-05T16:34:29.040023",
+      "source": null,
+      "chunk_index": null,
+      "parent_document_id": null
+    },
+    {
+      "id": "doc_4",
+      "content": "Document analysis uses NLP to extract key requirements",
+      "metadata": {
+        "type": "nlp"
+      },
+      "created_at": "2025-08-05T16:34:29.040026",
+      "updated_at": "2025-08-05T16:34:29.040027",
+      "source": null,
+      "chunk_index": null,
+      "parent_document_id": null
+    },
+    {
+      "id": "doc_5",
+      "content": "Competitive intelligence helps win more business opportunities",
+      "metadata": {
+        "type": "business"
+      },
+      "created_at": "2025-08-05T16:34:29.040029",
+      "updated_at": "2025-08-05T16:34:29.040042",
+      "source": null,
+      "chunk_index": null,
+      "parent_document_id": null
+    },
+    {
+      "id": "test_1",
+      "content": "This is a test document for API testing",
+      "metadata": {
+        "type": "test"
+      },
+      "created_at": "2025-08-05T17:13:06.600712",
+      "updated_at": "2025-08-05T17:13:06.600717",
+      "source": null,
+      "chunk_index": null,
+      "parent_document_id": null
+    }
+  ],
+  "id_mapping": [
+    "doc1",
+    "doc2",
+    "doc_1",
+    "doc_2",
+    "doc_3",
+    "doc_4",
+    "doc_5",
+    "doc_1",
+    "doc_2",
+    "doc_3",
+    "doc_4",
+    "doc_5",
+    "test_1"
+  ]
+}
