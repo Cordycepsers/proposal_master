@@ -322,3 +322,35 @@ class ProjectDocumentation(Base):
         Index("ix_project_docs_org_sector", "organization", "sector"),
         Index("ix_project_docs_type_date", "document_type", "publication_date"),
     )
+
+
+class DocumentStatus(PyEnum):
+    """Status of uploaded documents."""
+    UPLOADED = "uploaded"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class Document(Base):
+    """Model for uploaded documents."""
+
+    __tablename__ = "documents"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)  # UUID
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    file_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    upload_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    processing_status: Mapped[DocumentStatus] = mapped_column(Enum(DocumentStatus), default=DocumentStatus.UPLOADED)
+    processing_result: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON, nullable=True)
+
+    content_preview: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    page_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    word_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
+    __table_args__ = (
+        Index("ix_documents_status_timestamp", "processing_status", "upload_timestamp"),
+    )

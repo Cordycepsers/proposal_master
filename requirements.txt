@@ -19,12 +19,12 @@ faiss-cpu>=1.7.4
 fastapi>=0.100.0
 uvicorn>=0.23.0
 pydantic>=1.8.0
+pydantic-settings>=2.0.0
 
 # Database and caching
 sqlalchemy>=2.0.0
 aiosqlite>=0.20.0
 redis>=4.6.0
-sqlite3  # Built-in
 
 # Utilities
 python-dotenv>=0.19.0
@@ -41,6 +41,7 @@ httpx>=0.23.0
 fake-useragent>=1.1.1
 
 # Development and testing
+spacy>=3.0.0
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 black>=23.7.0
@@ -48,5 +49,5 @@ flake8>=6.0.0
 mypy>=1.5.0
 
 # Optional AI/ML services
-# openai>=0.27.0  # Uncomment if using OpenAI API
+openai>=1.0.0  # Uncomment if using OpenAI API
 # anthropic>=0.3.0  # Uncomment if using Anthropic API

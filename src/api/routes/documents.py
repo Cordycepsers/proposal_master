@@ -2,22 +2,24 @@
 Document management and upload routes.
 """
 
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
-import os
-import shutil
 from pathlib import Path
 import uuid
 from datetime import datetime
 import logging
 import sys
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 
 # Add src to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from ...core.document_processor import DocumentProcessor
+from ...models.core import Document, DocumentStatus
+from ...config.database import get_db_session
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +39,14 @@ class DocumentMetadata(BaseModel):
     original_filename: str
     file_size: int
     file_type: str
-    upload_timestamp: str
-    processing_status: str
+    upload_timestamp: datetime
+    processing_status: DocumentStatus
     content_preview: Optional[str] = None
     page_count: Optional[int] = None
     word_count: Optional[int] = None
+
+    class Config:
+        orm_mode = True
 
 class DocumentUploadResponse(BaseModel):
     """Document upload response model."""
@@ -66,7 +71,8 @@ class ProcessingResult(BaseModel):
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    process_immediately: bool = False
+    process_immediately: bool = False,
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Upload a document for processing.
@@ -74,6 +80,7 @@ async def upload_document(
     Args:
         file: The document file to upload
         process_immediately: Whether to process the document immediately
+        db: Database session
         
     Returns:
         DocumentUploadResponse: Upload result with document metadata
@@ -100,28 +107,32 @@ async def upload_document(
         
         # Generate unique document ID and filename
         document_id = str(uuid.uuid4())
-        safe_filename = f"{document_id}_{file.filename}"
+        safe_filename = f"{document_id}{file_ext}"
         file_path = UPLOAD_DIR / safe_filename
         
         # Save file
         with open(file_path, "wb") as buffer:
             buffer.write(content)
         
-        # Create metadata
-        metadata = DocumentMetadata(
+        # Create database record
+        new_document = Document(
             id=document_id,
             filename=safe_filename,
             original_filename=file.filename,
             file_size=len(content),
             file_type=file_ext,
-            upload_timestamp=datetime.now().isoformat(),
-            processing_status="uploaded"
+            processing_status=DocumentStatus.PROCESSING if process_immediately else DocumentStatus.UPLOADED
         )
+        db.add(new_document)
+        await db.commit()
+        await db.refresh(new_document)
+
+        # Create metadata for response
+        metadata = DocumentMetadata.from_orm(new_document)
         
         # Schedule background processing if requested
         if process_immediately:
             background_tasks.add_task(process_document_background, document_id, str(file_path))
-            metadata.processing_status = "processing"
         
         logger.info(f"Document uploaded: {document_id} ({file.filename})")
         
@@ -141,7 +152,8 @@ async def upload_document(
 async def list_documents(
     limit: int = 100,
     offset: int = 0,
-    file_type: Optional[str] = None
+    file_type: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     List uploaded documents.
@@ -150,52 +162,26 @@ async def list_documents(
         limit: Maximum number of documents to return
         offset: Number of documents to skip
         file_type: Filter by file type (e.g., '.pdf', '.docx')
+        db: Database session
         
     Returns:
         DocumentListResponse: List of documents with metadata
     """
     try:
-        documents = []
+        query = select(Document)
+        if file_type:
+            query = query.where(Document.file_type == file_type)
         
-        # Get all files in upload directory
-        for file_path in UPLOAD_DIR.iterdir():
-            if file_path.is_file():
-                # Extract document ID from filename
-                try:
-                    document_id = file_path.name.split('_')[0]
-                    file_ext = file_path.suffix.lower()
-                    
-                    # Apply file type filter
-                    if file_type and file_ext != file_type.lower():
-                        continue
-                    
-                    # Get file stats
-                    stat = file_path.stat()
-                    
-                    metadata = DocumentMetadata(
-                        id=document_id,
-                        filename=file_path.name,
-                        original_filename=file_path.name.replace(f"{document_id}_", ""),
-                        file_size=stat.st_size,
-                        file_type=file_ext,
-                        upload_timestamp=datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                        processing_status="stored"
-                    )
-                    
-                    documents.append(metadata)
-                    
-                except (IndexError, ValueError):
-                    continue
+        total_count_query = select(func.count()).select_from(query.subquery())
+        total_count = (await db.execute(total_count_query)).scalar_one()
+
+        query = query.offset(offset).limit(limit).order_by(Document.upload_timestamp.desc())
         
-        # Sort by upload timestamp (newest first)
-        documents.sort(key=lambda x: x.upload_timestamp, reverse=True)
-        
-        # Apply pagination
-        total_count = len(documents)
-        documents = documents[offset:offset + limit]
+        result = await db.execute(query)
+        documents = result.scalars().all()
         
         return DocumentListResponse(
-            documents=documents,
+            documents=[DocumentMetadata.from_orm(doc) for doc in documents],
             total_count=total_count
         )
         
@@ -204,41 +190,23 @@ async def list_documents(
         raise HTTPException(status_code=500, detail=f"Failed to list documents: {str(e)}")
 
 @router.get("/{document_id}", response_model=DocumentMetadata)
-async def get_document_metadata(document_id: str):
+async def get_document_metadata(document_id: str, db: AsyncSession = Depends(get_db_session)):
     """
     Get metadata for a specific document.
     
     Args:
         document_id: The document identifier
+        db: Database session
         
     Returns:
         DocumentMetadata: Document metadata
     """
     try:
-        # Find document file
-        file_path = None
-        for path in UPLOAD_DIR.iterdir():
-            if path.name.startswith(f"{document_id}_"):
-                file_path = path
-                break
-        
-        if not file_path or not file_path.exists():
+        document = await db.get(Document, document_id)
+        if not document:
             raise HTTPException(status_code=404, detail="Document not found")
         
-        # Get file stats
-        stat = file_path.stat()
-        
-        metadata = DocumentMetadata(
-            id=document_id,
-            filename=file_path.name,
-            original_filename=file_path.name.replace(f"{document_id}_", ""),
-            file_size=stat.st_size,
-            file_type=file_path.suffix.lower(),
-            upload_timestamp=datetime.fromtimestamp(stat.st_ctime).isoformat(),
-            processing_status="stored"
-        )
-        
-        return metadata
+        return DocumentMetadata.from_orm(document)
         
     except HTTPException:
         raise
@@ -247,33 +215,29 @@ async def get_document_metadata(document_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to get metadata: {str(e)}")
 
 @router.get("/{document_id}/download")
-async def download_document(document_id: str):
+async def download_document(document_id: str, db: AsyncSession = Depends(get_db_session)):
     """
     Download a document file.
     
     Args:
         document_id: The document identifier
+        db: Database session
         
     Returns:
         FileResponse: The document file
     """
     try:
-        # Find document file
-        file_path = None
-        for path in UPLOAD_DIR.iterdir():
-            if path.name.startswith(f"{document_id}_"):
-                file_path = path
-                break
-        
-        if not file_path or not file_path.exists():
+        document = await db.get(Document, document_id)
+        if not document:
             raise HTTPException(status_code=404, detail="Document not found")
-        
-        # Get original filename
-        original_filename = file_path.name.replace(f"{document_id}_", "")
+
+        file_path = UPLOAD_DIR / document.filename
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Document file not found")
         
         return FileResponse(
             path=str(file_path),
-            filename=original_filename,
+            filename=document.original_filename,
             media_type='application/octet-stream'
         )
         
@@ -287,7 +251,8 @@ async def download_document(document_id: str):
 async def process_document(
     document_id: str,
     background_tasks: BackgroundTasks,
-    force: bool = False
+    force: bool = False,
+    db: AsyncSession = Depends(get_db_session)
 ):
     """
     Process a document to extract content and metadata.
@@ -295,20 +260,27 @@ async def process_document(
     Args:
         document_id: The document identifier
         force: Force reprocessing even if already processed
+        db: Database session
         
     Returns:
         ProcessingResult: Processing result
     """
     try:
-        # Find document file
-        file_path = None
-        for path in UPLOAD_DIR.iterdir():
-            if path.name.startswith(f"{document_id}_"):
-                file_path = path
-                break
-        
-        if not file_path or not file_path.exists():
+        document = await db.get(Document, document_id)
+        if not document:
             raise HTTPException(status_code=404, detail="Document not found")
+
+        if document.processing_status == DocumentStatus.COMPLETED and not force:
+            return ProcessingResult(
+                document_id=document_id,
+                status="already_processed",
+                content=document.processing_result.get('content'),
+                metadata=document.processing_result.get('metadata')
+            )
+
+        file_path = UPLOAD_DIR / document.filename
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Document file not found")
         
         # Process in background
         background_tasks.add_task(process_document_background, document_id, str(file_path))
@@ -327,31 +299,35 @@ async def process_document(
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
 @router.delete("/{document_id}")
-async def delete_document(document_id: str):
+async def delete_document(document_id: str, db: AsyncSession = Depends(get_db_session)):
     """
     Delete a document and its associated data.
     
     Args:
         document_id: The document identifier
+        db: Database session
         
     Returns:
         dict: Deletion confirmation
     """
     try:
-        # Find and delete document file
-        file_path = None
-        for path in UPLOAD_DIR.iterdir():
-            if path.name.startswith(f"{document_id}_"):
-                file_path = path
-                break
-        
-        if not file_path or not file_path.exists():
+        document = await db.get(Document, document_id)
+        if not document:
             raise HTTPException(status_code=404, detail="Document not found")
+
+        # Delete file from filesystem
+        file_path = UPLOAD_DIR / document.filename
+        if file_path.exists():
+            file_path.unlink()
+
+        # Delete from vector database
+        from ...core.rag_system import RAGSystem
+        rag_system = RAGSystem()
+        await rag_system.remove_document(document_id)
         
-        # Delete file
-        file_path.unlink()
-        
-        # TODO: Delete associated processing results, embeddings, etc.
+        # Delete from database
+        await db.delete(document)
+        await db.commit()
         
         logger.info(f"Document deleted: {document_id}")
         
@@ -369,19 +345,37 @@ async def delete_document(document_id: str):
 # Background task functions
 async def process_document_background(document_id: str, file_path: str):
     """Background task to process a document."""
-    try:
-        logger.info(f"Starting background processing for document: {document_id}")
-        
-        # Initialize document processor
-        processor = DocumentProcessor()
-        
-        # Process document
-        result = processor.process_document(file_path)
-        
-        # TODO: Store processing results (database, cache, etc.)
-        
-        logger.info(f"Document processing completed: {document_id}")
-        
-    except Exception as e:
-        logger.error(f"Background processing failed for {document_id}: {str(e)}")
-        # TODO: Update processing status to "failed"
+    async with get_db_session() as db:
+        try:
+            logger.info(f"Starting background processing for document: {document_id}")
+
+            # Initialize document processor
+            processor = DocumentProcessor()
+
+            # Process document
+            result = processor.process_document(Path(file_path))
+
+            # Store processing results in the database
+            document = await db.get(Document, document_id)
+            if document:
+                document.processing_status = DocumentStatus.COMPLETED
+                document.processing_result = result
+                document.content_preview = result.get('content', '')[:500]
+                document.word_count = len(result.get('content', '').split())
+                await db.commit()
+
+            # Add document to RAG system
+            from ...core.rag_system import RAGSystem
+            rag_system = RAGSystem()
+            await rag_system.add_document(document_id, result.get('content', ''), result.get('metadata', {}))
+
+            logger.info(f"Document processing completed: {document_id}")
+
+        except Exception as e:
+            logger.error(f"Background processing failed for {document_id}: {str(e)}")
+            # Update processing status to "failed"
+            document = await db.get(Document, document_id)
+            if document:
+                document.processing_status = DocumentStatus.FAILED
+                document.processing_result = {"error": str(e)}
+                await db.commit()

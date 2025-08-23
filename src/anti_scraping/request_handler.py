@@ -3,6 +3,7 @@ import requests
 import time
 import random
 from typing import Dict, Optional, Any
+from urllib.parse import urlparse
 from .user_agent_manager import UserAgentManager
 from .proxy_manager import ProxyManager
 from .rate_limiter import RateLimiter
@@ -25,8 +26,10 @@ class RequestHandler:
         """
         Make HTTP request with anti-scraping measures
         """
+        print("--- Entering make_request ---")
+        domain = urlparse(url).netloc
         # Wait if rate limit is exceeded
-        self.rate_limiter.wait_if_needed()
+        self.rate_limiter.wait_if_needed(domain)
         
         # Get random user-agent
         user_agent = self.user_agent_manager.get_random_user_agent()
@@ -53,6 +56,7 @@ class RequestHandler:
         
         # Make the request
         try:
+            print("--- About to call requests.request ---")
             response = requests.request(
                 method=method,
                 url=url,
@@ -61,6 +65,7 @@ class RequestHandler:
                 timeout=30,
                 **kwargs
             )
+            print("--- requests.request was called ---")
             
             # Check if CAPTCHA was encountered
             if self._is_captcha_encountered(response):
@@ -71,7 +76,7 @@ class RequestHandler:
                     return self._retry_with_captcha_solution(url, captcha_solution)
             
             # Record the request
-            self.rate_limiter.make_request()
+            self.rate_limiter.record_request(domain)
             
             return response
             

@@ -115,8 +115,8 @@ async def main():
     args = parse_arguments()
     
     # Setup logging
-    log_level = logging.DEBUG if args["verbose"] else logging.INFO
-    setup_logging(level=log_level)
+    log_level_str = "DEBUG" if args["verbose"] else "INFO"
+    setup_logging(log_level=log_level_str)
     
     # Print environment information
     print_environment_info()

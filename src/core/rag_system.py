@@ -8,6 +8,8 @@ from documents and generating contextual responses using the new vector database
 from typing import List, Dict, Any, Optional, Tuple
 import logging
 from pathlib import Path
+import os
+import openai
 
 from src.core.vector_database import VectorDatabase, VectorDocument, create_vector_database
 from src.services.vector_integration import VectorIntegrationService, create_vector_integration_service
@@ -161,16 +163,41 @@ class RAGSystem:
         if not context_docs:
             return "I don't have enough information to answer that question."
         
-        # Simple response generation (placeholder)
-        context_text = "\n\n".join([doc.get('content', '')[:200] for doc in context_docs[:3]])
-        
-        response = f"""Based on the available documents, here's what I found:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return "OpenAI API key is not configured. Please set the OPENAI_API_KEY environment variable."
 
-{context_text[:max_length]}
+        openai.api_key = api_key
 
-This information comes from {len(context_docs)} relevant document(s) in our database."""
+        context_text = "\n\n".join([doc.get('content', '') for doc in context_docs])
+
+        prompt = f"""
+        You are a helpful assistant for a proposal writing system.
+        A user has asked the following query: "{query}"
+
+        Here is some relevant context from our knowledge base:
+        ---
+        {context_text}
+        ---
+
+        Based on the provided context, please generate a comprehensive response to the user's query.
+        The response should be no longer than {max_length} words.
+        """
         
-        return response
+        try:
+            response = openai.Completion.create(
+                engine="text-davinci-003",
+                prompt=prompt,
+                max_tokens=max_length,
+                temperature=0.7,
+                top_p=1.0,
+                frequency_penalty=0.0,
+                presence_penalty=0.0
+            )
+            return response.choices[0].text.strip()
+        except Exception as e:
+            logger.error(f"Error generating response from OpenAI: {e}")
+            return f"Error generating response: {e}"
     
     async def query_with_response(self, query: str, top_k: int = 5, 
                                 max_response_length: int = 500) -> Dict[str, Any]:
@@ -196,134 +223,3 @@ This information comes from {len(context_docs)} relevant document(s) in our data
             'search_results': search_results,
             'context_documents': context_docs
         }
-        """
-        Generate embedding for text (placeholder implementation).
-        
-        In production, this would use a proper embedding model like
-        sentence-transformers or OpenAI embeddings.
-        """
-        # Simple hash-based embedding for demonstration
-        import hashlib
-        hash_obj = hashlib.md5(text.encode())
-        # Convert to numpy array (simplified)
-        return np.array([ord(c) for c in hash_obj.hexdigest()[:10]], dtype=float)
-    
-    def search(self, query: str, top_k: int = 5) -> List[Tuple[str, Dict[str, Any], float]]:
-        """
-        Search for relevant documents based on query.
-        
-        Args:
-            query: User query string
-            top_k: Number of top results to return
-            
-        Returns:
-            List of tuples (doc_id, document, similarity_score)
-        """
-        if not self.is_loaded:
-            self.load_index()
-        
-        query_embedding = self._generate_embedding(query)
-        similarities = []
-        
-        for doc_id, doc_embedding in self.embeddings.items():
-            similarity = self._calculate_similarity(query_embedding, doc_embedding)
-            similarities.append((doc_id, similarity))
-        
-        # Sort by similarity and return top_k
-        similarities.sort(key=lambda x: x[1], reverse=True)
-        
-        results = []
-        for doc_id, score in similarities[:top_k]:
-            document = self.documents.get(doc_id, {})
-            results.append((doc_id, document, score))
-        
-        return results
-    
-    def _calculate_similarity(self, embedding1: np.ndarray, embedding2: np.ndarray) -> float:
-        """Calculate cosine similarity between embeddings."""
-        # Simple dot product normalized (placeholder)
-        norm1 = np.linalg.norm(embedding1)
-        norm2 = np.linalg.norm(embedding2)
-        
-        if norm1 == 0 or norm2 == 0:
-            return 0.0
-        
-        return np.dot(embedding1, embedding2) / (norm1 * norm2)
-    
-    def generate_response(self, query: str, context_docs: List[Dict[str, Any]]) -> str:
-        """
-        Generate response based on query and retrieved context.
-        
-        Args:
-            query: User query
-            context_docs: Retrieved relevant documents
-            
-        Returns:
-            Generated response string
-        """
-        # Placeholder response generation
-        context_snippets = []
-        for doc in context_docs:
-            content = doc.get('content', '')[:200]  # First 200 chars
-            context_snippets.append(content)
-        
-        combined_context = "\n\n".join(context_snippets)
-        
-        # In production, this would use an LLM for generation
-        response = f"""Based on the available documents, here's what I found relevant to your query "{query}":
-
-Context from documents:
-{combined_context}
-
-[Note: This is a placeholder response. In production, this would use an LLM to generate a proper response based on the retrieved context.]
-"""
-        return response
-    
-    def query(self, query: str, top_k: int = 5) -> str:
-        """
-        Complete RAG query pipeline: retrieve and generate.
-        
-        Args:
-            query: User query string
-            top_k: Number of documents to retrieve
-            
-        Returns:
-            Generated response
-        """
-        # Retrieve relevant documents
-        search_results = self.search(query, top_k)
-        context_docs = [doc for _, doc, _ in search_results]
-        
-        # Generate response
-        response = self.generate_response(query, context_docs)
-        
-        return response
-    
-    def _save_index(self) -> None:
-        """Save the RAG index to disk."""
-        self.index_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        index_data = {
-            'embeddings': self.embeddings,
-            'documents': self.documents
-        }
-        
-        with open(self.index_path, 'wb') as f:
-            pickle.dump(index_data, f)
-        
-        logger.info(f"RAG index saved to {self.index_path}")
-    
-    def load_index(self) -> None:
-        """Load the RAG index from disk."""
-        if not self.index_path.exists():
-            logger.warning(f"No RAG index found at {self.index_path}")
-            return
-        
-        with open(self.index_path, 'rb') as f:
-            index_data = pickle.load(f)
-        
-        self.embeddings = index_data.get('embeddings', {})
-        self.documents = index_data.get('documents', {})
-        self.is_loaded = True
-        
-        logger.info(f"RAG index loaded from {self.index_path}")
