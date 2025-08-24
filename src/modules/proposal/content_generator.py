@@ -11,6 +11,11 @@ import asyncio
 from datetime import datetime
 
 from ...agents.base_agent import BaseAgent
+import google.generativeai as genai
+from google.generativeai.types import GenerateContentResponse
+from google.generativeai.types import Tool
+from google.generativeai.types import GenerationConfig
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +28,7 @@ class ContentGenerator(BaseAgent):
             name="Content Generator",
             description="Generates proposal content based on requirements and analysis"
         )
+        self.configure_gemini()
         
         # Content sections and their priorities
         self.content_sections = {
@@ -113,7 +119,34 @@ class ContentGenerator(BaseAgent):
             'avg_word_count': 0,
             'sections_created': 0
         }
-    
+        self.model = None
+
+    def configure_gemini(self):
+        """Configure the Gemini API key."""
+        print("--- In configure_gemini ---")
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            logger.warning("GOOGLE_API_KEY not found. Content generation will use templates.")
+            return
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel('gemini-pro')
+
+    async def _generate_with_gemini(self, prompt: str) -> str:
+        """Generate content using Gemini."""
+        if not self.model:
+            return "Gemini model not configured. Using template."
+        try:
+            generation_config = GenerationConfig(
+                temperature=0.7,
+                top_p=1.0,
+                top_k=40,
+            )
+            response = await self.model.generate_content_async(prompt, generation_config=generation_config)
+            return response.text
+        except Exception as e:
+            logger.error(f"Error generating content with Gemini: {e}")
+            return f"Error generating content: {e}"
+
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate proposal content based on analysis results.
@@ -237,620 +270,35 @@ class ContentGenerator(BaseAgent):
             self.logger.error(f"Section generation failed: {e}")
             return {}
     
-    async def _generate_section_content(self, section_name: str, 
-                                      requirements_analysis: Dict[str, Any], 
-                                      client_profile: Dict[str, Any], 
-                                      project_specifications: Dict[str, Any], 
+    async def _generate_section_content(self, section_name: str,
+                                      requirements_analysis: Dict[str, Any],
+                                      client_profile: Dict[str, Any],
+                                      project_specifications: Dict[str, Any],
                                       content_style: str) -> str:
-        """Generate content for a specific section."""
-        try:
-            if section_name == 'project_overview':
-                return await self._generate_project_overview(
-                    requirements_analysis, client_profile, project_specifications
-                )
-            elif section_name == 'technical_approach':
-                return await self._generate_technical_approach(
-                    requirements_analysis, project_specifications
-                )
-            elif section_name == 'timeline_deliverables':
-                return await self._generate_timeline_deliverables(
-                    requirements_analysis, project_specifications
-                )
-            elif section_name == 'team_qualifications':
-                return await self._generate_team_qualifications(
-                    requirements_analysis, client_profile
-                )
-            elif section_name == 'budget_pricing':
-                return await self._generate_budget_pricing(
-                    requirements_analysis, project_specifications
-                )
-            elif section_name == 'risk_management':
-                return await self._generate_risk_management(
-                    requirements_analysis
-                )
-            elif section_name == 'quality_assurance':
-                return await self._generate_quality_assurance(
-                    requirements_analysis, project_specifications
-                )
-            elif section_name == 'client_references':
-                return await self._generate_client_references(
-                    client_profile, project_specifications
-                )
-            elif section_name == 'terms_conditions':
-                return await self._generate_terms_conditions(
-                    project_specifications
-                )
-            else:
-                return await self._generate_generic_content(
-                    section_name, requirements_analysis, client_profile, project_specifications
-                )
-                
-        except Exception as e:
-            self.logger.error(f"Content generation failed for {section_name}: {e}")
-            return f"Content generation failed for {section_name}: {str(e)}"
-    
-    async def _generate_project_overview(self, requirements_analysis: Dict[str, Any], 
-                                       client_profile: Dict[str, Any], 
-                                       project_specifications: Dict[str, Any]) -> str:
-        """Generate project overview section."""
-        try:
-            client_name = client_profile.get('name', 'Your Organization')
-            project_title = project_specifications.get('title', 'This Project')
-            
-            # Extract key requirements
-            requirements_summary = requirements_analysis.get('summary', {})
-            total_requirements = requirements_summary.get('total_requirements', 0)
-            complexity_score = requirements_summary.get('complexity_score', 0)
-            
-            # Determine project complexity description
-            if complexity_score > 7:
-                complexity_desc = "highly complex, multi-faceted initiative"
-            elif complexity_score > 5:
-                complexity_desc = "moderately complex project"
-            else:
-                complexity_desc = "well-scoped initiative"
-            
-            overview = f"""**Project Overview**
+        """Generate content for a specific section using Gemini."""
+        if not self.model:
+            return await self._generate_generic_content(section_name, requirements_analysis, client_profile, project_specifications)
 
-{project_title} represents a {complexity_desc} designed to address {client_name}'s strategic objectives and operational requirements.
+        section_title = section_name.replace('_', ' ').title()
+        prompt = f"""
+        As an expert proposal writer, generate the content for the "{section_title}" section of a business proposal.
 
-**Project Scope and Objectives**
+        **Client Profile:**
+        {client_profile}
 
-Based on our comprehensive analysis of your requirements, this project encompasses {total_requirements} distinct requirements across multiple functional and technical domains. The primary objectives include:
+        **Project Specifications:**
+        {project_specifications}
 
-• Delivering a solution that meets all critical business requirements
-• Ensuring scalable and maintainable technical architecture
-• Providing comprehensive user training and change management support
-• Establishing robust operational procedures and documentation
+        **Requirements Analysis:**
+        {requirements_analysis}
 
-**Value Proposition**
+        **Content Style:** {content_style}
 
-This project will deliver measurable value through:
-- Enhanced operational efficiency and productivity
-- Improved data visibility and decision-making capabilities
-- Reduced operational risks and increased compliance
-- Future-ready platform for continued growth and innovation
+        Please generate the content for the "{section_title}" section. The content should be professional, persuasive, and tailored to the provided information.
+        """
 
-**Approach Summary**
+        return await self._generate_with_gemini(prompt)
 
-Our approach combines industry best practices with customized solutions tailored specifically to {client_name}'s unique requirements and organizational context. We will leverage proven methodologies while maintaining flexibility to adapt to evolving needs throughout the project lifecycle."""
-            
-            return overview
-            
-        except Exception as e:
-            self.logger.error(f"Project overview generation failed: {e}")
-            return "Project overview content could not be generated."
-    
-    async def _generate_technical_approach(self, requirements_analysis: Dict[str, Any], 
-                                         project_specifications: Dict[str, Any]) -> str:
-        """Generate technical approach section."""
-        try:
-            # Extract technical requirements
-            technical_reqs = requirements_analysis.get('requirements', {}).get('technical', [])
-            technical_specs = requirements_analysis.get('technical_specifications', {})
-            
-            # Get technology mentions
-            technologies = technical_specs.get('technologies', [])
-            platforms = technical_specs.get('platforms', [])
-            
-            tech_list = technologies + platforms
-            tech_mention = f"leveraging {', '.join(tech_list[:3])}" if tech_list else "using modern, proven technologies"
-            
-            approach = f"""**Technical Approach**
-
-**Architecture and Design Philosophy**
-
-Our technical approach is built on the principles of scalability, maintainability, and security. We will implement a robust architecture {tech_mention} to ensure optimal performance and future extensibility.
-
-**Implementation Strategy**
-
-1. **Requirements Analysis and Design**
-   - Detailed technical requirements validation
-   - System architecture design and documentation
-   - Technology stack finalization and approval
-
-2. **Development Methodology**
-   - Agile development approach with regular sprint reviews
-   - Continuous integration and deployment practices
-   - Comprehensive testing at each development phase
-
-3. **Quality Assurance**
-   - Automated testing frameworks and procedures
-   - Code review processes and standards
-   - Performance and security testing protocols
-
-4. **Integration and Deployment**
-   - Phased deployment strategy to minimize disruption
-   - Comprehensive integration testing
-   - Production deployment with rollback capabilities
-
-**Technical Standards and Best Practices**
-
-All development will adhere to industry-standard best practices including:
-- Clean code principles and documentation standards
-- Security-first development approach
-- Performance optimization and monitoring
-- Comprehensive error handling and logging"""
-            
-            # Add specific technical considerations if available
-            if len(technical_reqs) > 0:
-                approach += f"\n\n**Specific Technical Considerations**\n\nThis project addresses {len(technical_reqs)} specific technical requirements, ensuring comprehensive coverage of all technical specifications and constraints."
-            
-            return approach
-            
-        except Exception as e:
-            self.logger.error(f"Technical approach generation failed: {e}")
-            return "Technical approach content could not be generated."
-    
-    async def _generate_timeline_deliverables(self, requirements_analysis: Dict[str, Any], 
-                                            project_specifications: Dict[str, Any]) -> str:
-        """Generate timeline and deliverables section."""
-        try:
-            # Extract project details
-            timeline = project_specifications.get('timeline', {})
-            duration = timeline.get('duration_months', 6)
-            
-            # Calculate phases based on duration
-            if duration <= 3:
-                phases = 2
-                phase_duration = "6-8 weeks"
-            elif duration <= 6:
-                phases = 3
-                phase_duration = "8-10 weeks"
-            else:
-                phases = 4
-                phase_duration = "10-12 weeks"
-            
-            timeline_content = f"""**Project Timeline and Deliverables**
-
-**Project Duration**
-Total project duration: {duration} months, organized into {phases} distinct phases
-
-**Phase Structure**
-
-**Phase 1: Analysis and Planning** ({phase_duration})
-- Requirements validation and finalization
-- Technical architecture design
-- Project plan and resource allocation
-- Risk assessment and mitigation planning
-
-**Deliverables:**
-- Requirements specification document
-- Technical architecture documentation
-- Detailed project plan and timeline
-- Risk management plan
-
-**Phase 2: Development and Implementation** ({phase_duration})
-- Core system development
-- Integration with existing systems
-- Initial testing and quality assurance
-- Documentation and user guides
-
-**Deliverables:**
-- Working system prototype
-- Integration documentation
-- Test results and quality reports
-- User documentation and training materials"""
-            
-            if phases >= 3:
-                timeline_content += f"""
-
-**Phase 3: Testing and Refinement** ({phase_duration})
-- Comprehensive system testing
-- User acceptance testing
-- Performance optimization
-- Security validation
-
-**Deliverables:**
-- Complete test documentation
-- Performance benchmarks
-- Security assessment report
-- Final system documentation"""
-            
-            if phases >= 4:
-                timeline_content += f"""
-
-**Phase 4: Deployment and Support** ({phase_duration})
-- Production deployment
-- User training and change management
-- Go-live support
-- Knowledge transfer
-
-**Deliverables:**
-- Production system deployment
-- Training completion certificates
-- Support documentation
-- Project closure report"""
-            
-            timeline_content += """
-
-**Key Milestones**
-- Project kickoff and requirements sign-off
-- Architecture review and approval
-- Development completion and testing sign-off
-- User acceptance testing completion
-- Production go-live and project closure
-
-**Quality Gates**
-Each phase includes defined quality gates to ensure deliverables meet specified requirements before progression to the next phase."""
-            
-            return timeline_content
-            
-        except Exception as e:
-            self.logger.error(f"Timeline generation failed: {e}")
-            return "Timeline and deliverables content could not be generated."
-    
-    async def _generate_team_qualifications(self, requirements_analysis: Dict[str, Any], 
-                                          client_profile: Dict[str, Any]) -> str:
-        """Generate team qualifications section."""
-        try:
-            # Extract technical requirements to determine team needs
-            technical_reqs = requirements_analysis.get('requirements', {}).get('technical', [])
-            complexity_score = requirements_analysis.get('summary', {}).get('complexity_score', 5)
-            
-            # Determine team structure based on complexity
-            if complexity_score > 7:
-                team_structure = "senior-level specialists"
-                experience_level = "10+ years"
-            elif complexity_score > 5:
-                team_structure = "experienced professionals"
-                experience_level = "7+ years"
-            else:
-                team_structure = "qualified team members"
-                experience_level = "5+ years"
-            
-            qualifications = f"""**Team Qualifications and Expertise**
-
-**Team Composition**
-
-Our project team consists of {team_structure} with {experience_level} of relevant industry experience. The team structure includes:
-
-**Project Leadership**
-- **Project Manager**: PMP-certified with extensive experience in similar projects
-- **Technical Lead**: Senior architect with deep expertise in the required technology stack
-- **Quality Assurance Lead**: Experienced QA professional with comprehensive testing expertise
-
-**Core Development Team**
-- **Senior Developers** ({experience_level} experience each)
-- **System Integration Specialists**
-- **Database and Infrastructure Experts**
-- **User Experience and Interface Designers**
-
-**Specialized Expertise**
-- Industry-specific knowledge and best practices
-- Modern development methodologies and tools
-- Security and compliance requirements
-- Performance optimization and scalability
-
-**Team Qualifications**
-
-Our team members possess:
-- Relevant technical certifications and continuous education
-- Proven track record of successful project delivery
-- Experience with similar industry requirements and challenges
-- Strong communication and collaboration skills
-
-**Quality Assurance**
-- Comprehensive testing expertise across all technical domains
-- Automated testing framework development and implementation
-- Performance and security testing capabilities
-- User acceptance testing coordination and support
-
-**Knowledge Transfer and Training**
-Our team includes dedicated training specialists who will ensure:
-- Comprehensive knowledge transfer to your team
-- User training and adoption support
-- Documentation and best practices sharing
-- Ongoing support and maintenance guidance"""
-            
-            return qualifications
-            
-        except Exception as e:
-            self.logger.error(f"Team qualifications generation failed: {e}")
-            return "Team qualifications content could not be generated."
-    
-    async def _generate_budget_pricing(self, requirements_analysis: Dict[str, Any], 
-                                     project_specifications: Dict[str, Any]) -> str:
-        """Generate budget and pricing section."""
-        try:
-            # Extract project complexity for pricing estimation
-            complexity_score = requirements_analysis.get('summary', {}).get('complexity_score', 5)
-            total_requirements = requirements_analysis.get('summary', {}).get('total_requirements', 10)
-            duration = project_specifications.get('timeline', {}).get('duration_months', 6)
-            
-            # Calculate rough pricing tiers (simplified example)
-            base_price = complexity_score * total_requirements * 1000
-            duration_factor = duration * 0.8
-            
-            budget_content = f"""**Budget and Pricing Structure**
-
-**Investment Overview**
-
-This project represents a strategic investment in your organization's operational capabilities and long-term growth. Our pricing structure is designed to provide maximum value while ensuring predictable costs throughout the project lifecycle.
-
-**Pricing Model**
-
-We propose a fixed-price model with clearly defined scope and deliverables, providing you with:
-- Cost predictability and budget control
-- Risk mitigation through fixed pricing
-- Clear deliverable expectations
-- No surprise costs or scope creep
-
-**Investment Breakdown**
-
-**Phase-Based Pricing Structure:**
-- Planning and Analysis Phase: 20% of total investment
-- Development and Implementation: 50% of total investment  
-- Testing and Quality Assurance: 20% of total investment
-- Deployment and Support: 10% of total investment
-
-**Value Components**
-
-Your investment includes:
-- Complete project management and coordination
-- All development and technical implementation
-- Comprehensive testing and quality assurance
-- Documentation and knowledge transfer
-- User training and change management support
-- 90-day post-implementation support
-
-**Payment Schedule**
-
-- 30% upon project initiation and requirements approval
-- 40% upon development completion and testing sign-off
-- 20% upon successful deployment and go-live
-- 10% upon project closure and final deliverable acceptance
-
-**Additional Value**
-
-- Fixed-price protection against scope creep
-- Comprehensive warranty on all deliverables
-- Post-implementation support and guidance
-- Future enhancement and expansion planning"""
-            
-            return budget_content
-            
-        except Exception as e:
-            self.logger.error(f"Budget pricing generation failed: {e}")
-            return "Budget and pricing content could not be generated."
-    
-    async def _generate_risk_management(self, requirements_analysis: Dict[str, Any]) -> str:
-        """Generate risk management section."""
-        try:
-            # Check if risk assessment data is available
-            has_risk_data = 'risk_assessment' in requirements_analysis
-            
-            risk_content = """**Risk Management and Mitigation**
-
-**Risk Management Approach**
-
-We employ a proactive risk management strategy throughout the project lifecycle, focusing on early identification, assessment, and mitigation of potential challenges.
-
-**Key Risk Categories**
-
-**Technical Risks**
-- Technology integration challenges
-- Performance and scalability concerns
-- Security vulnerabilities
-
-*Mitigation:* Comprehensive technical review, proof-of-concept development, and rigorous testing protocols
-
-**Operational Risks**
-- Resource availability and allocation
-- Timeline and schedule adherence
-- Change management and user adoption
-
-*Mitigation:* Detailed project planning, regular milestone reviews, and proactive communication
-
-**Business Risks**
-- Scope changes and requirement evolution
-- Stakeholder alignment and approval processes
-- Budget and cost management
-
-*Mitigation:* Clear scope definition, regular stakeholder engagement, and transparent cost tracking"""
-            
-            if has_risk_data:
-                risk_assessment = requirements_analysis.get('risk_assessment', {})
-                overall_risk = risk_assessment.get('overall_risk', {})
-                risk_level = overall_risk.get('level', 'medium')
-                
-                risk_content += f"""
-
-**Project-Specific Risk Assessment**
-
-Based on our analysis, this project has been assessed as {risk_level} risk, with specific attention to:
-- Requirements complexity and interdependencies
-- Technical implementation challenges
-- Organizational readiness and change management needs
-
-**Continuous Risk Monitoring**
-- Weekly risk assessment and review meetings
-- Proactive identification of emerging risks
-- Regular mitigation strategy updates and refinements"""
-            
-            risk_content += """
-
-**Risk Communication and Reporting**
-- Transparent risk status reporting to all stakeholders
-- Regular risk review meetings and mitigation planning sessions
-- Clear escalation procedures for high-priority risks
-
-**Contingency Planning**
-- Defined contingency plans for identified high-risk scenarios
-- Resource allocation buffers for unexpected challenges
-- Alternative approach strategies for critical path items"""
-            
-            return risk_content
-            
-        except Exception as e:
-            self.logger.error(f"Risk management generation failed: {e}")
-            return "Risk management content could not be generated."
-    
-    async def _generate_quality_assurance(self, requirements_analysis: Dict[str, Any], 
-                                        project_specifications: Dict[str, Any]) -> str:
-        """Generate quality assurance section."""
-        try:
-            qa_content = """**Quality Assurance and Testing**
-
-**Quality Assurance Philosophy**
-
-Quality is embedded throughout our development process, not just at the end. We implement comprehensive quality assurance measures at every phase to ensure deliverables meet or exceed expectations.
-
-**Testing Strategy**
-
-**Unit Testing**
-- Comprehensive code-level testing for all components
-- Automated test suite development and execution
-- Code coverage analysis and reporting
-
-**Integration Testing**
-- System integration testing across all components
-- Third-party integration validation
-- Data flow and interface testing
-
-**User Acceptance Testing**
-- Structured UAT planning and execution
-- User scenario testing and validation
-- Performance and usability testing
-
-**Quality Standards**
-
-All deliverables will meet or exceed:
-- Industry-standard quality benchmarks
-- Performance and reliability requirements
-- Security and compliance standards
-- Usability and accessibility guidelines
-
-**Quality Gates and Reviews**
-
-- Code review processes for all development work
-- Architecture and design review checkpoints
-- Regular quality assessment and improvement cycles
-- Final quality validation before delivery
-
-**Testing Documentation**
-- Comprehensive test plans and procedures
-- Test case documentation and execution results
-- Defect tracking and resolution reporting
-- Quality metrics and performance benchmarks"""
-            
-            return qa_content
-            
-        except Exception as e:
-            self.logger.error(f"Quality assurance generation failed: {e}")
-            return "Quality assurance content could not be generated."
-    
-    async def _generate_client_references(self, client_profile: Dict[str, Any], 
-                                        project_specifications: Dict[str, Any]) -> str:
-        """Generate client references section."""
-        try:
-            industry = project_specifications.get('industry', 'technology')
-            
-            references_content = f"""**Client References and Case Studies**
-
-**Relevant Experience**
-
-We have successfully delivered similar projects across the {industry} industry, with a proven track record of:
-- On-time and on-budget project delivery
-- High client satisfaction and long-term partnerships
-- Measurable business value and ROI achievement
-
-**Case Study Highlights**
-
-**Similar Project Implementation**
-- Successfully delivered comparable solutions with similar scope and complexity
-- Achieved 95%+ user adoption rates within 30 days of go-live
-- Reduced operational costs by 20-30% through process optimization
-
-**Industry Expertise**
-- Deep understanding of {industry} industry requirements and challenges
-- Proven experience with regulatory compliance and industry standards
-- Long-term client relationships and ongoing support partnerships
-
-**Client Testimonials**
-
-Our clients consistently highlight:
-- Professional project management and communication
-- Technical expertise and innovative solutions
-- Comprehensive support and knowledge transfer
-- Measurable business impact and value delivery
-
-**References Available**
-
-Upon request, we can provide detailed references from recent clients with similar project requirements and industry focus."""
-            
-            return references_content
-            
-        except Exception as e:
-            self.logger.error(f"Client references generation failed: {e}")
-            return "Client references content could not be generated."
-    
-    async def _generate_terms_conditions(self, project_specifications: Dict[str, Any]) -> str:
-        """Generate terms and conditions section."""
-        try:
-            terms_content = """**Terms and Conditions**
-
-**Project Scope and Deliverables**
-- All deliverables and scope items are clearly defined in the project specification
-- Any changes to scope will be documented and approved through formal change control process
-- Additional work outside defined scope will be quoted separately
-
-**Payment Terms**
-- Payment schedule as outlined in the pricing section
-- Invoices are due within 30 days of receipt
-- Late payment may result in project delays
-
-**Intellectual Property**
-- All custom development becomes the property of the client upon final payment
-- Third-party licenses and tools remain property of respective owners
-- Source code and documentation will be provided upon project completion
-
-**Warranties and Support**
-- 90-day warranty on all deliverables from go-live date
-- Defect resolution and bug fixes included during warranty period
-- Post-warranty support available through separate maintenance agreement
-
-**Project Management**
-- Regular progress reports and milestone reviews
-- Clear communication channels and escalation procedures
-- Change management process for scope or requirement modifications
-
-**Confidentiality**
-- All client information treated as confidential
-- Non-disclosure agreements in place for all team members
-- Secure development and deployment practices maintained throughout project
-
-**Acceptance Criteria**
-- Clear acceptance criteria defined for all deliverables
-- User acceptance testing period for final validation
-- Formal sign-off required for project completion"""
-            
-            return terms_content
-            
-        except Exception as e:
-            self.logger.error(f"Terms and conditions generation failed: {e}")
-            return "Terms and conditions content could not be generated."
-    
     async def _generate_generic_content(self, section_name: str, 
                                       requirements_analysis: Dict[str, Any], 
                                       client_profile: Dict[str, Any], 
