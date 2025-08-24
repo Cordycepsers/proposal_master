@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 import re
 from collections import Counter
+import spacy
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,11 @@ class DocumentAnalyzer:
     
     def __init__(self):
         self.analysis_cache = {}
+        try:
+            self.nlp = spacy.load("en_core_web_sm")
+        except OSError:
+            logger.warning("Spacy model 'en_core_web_sm' not found. Please run 'python -m spacy download en_core_web_sm'")
+            self.nlp = None
     
     def analyze_document_structure(self, content: str) -> Dict[str, Any]:
         """
@@ -54,15 +60,53 @@ class DocumentAnalyzer:
             Dictionary of entity types and their occurrences
         """
         entities = {
-            'dates': self._extract_dates(content),
-            'monetary_amounts': self._extract_monetary_amounts(content),
-            'percentages': self._extract_percentages(content),
-            'organizations': self._extract_organizations(content),
+            'dates': [],
+            'monetary_amounts': [],
+            'percentages': [],
+            'organizations': [],
+            'persons': [],
+            'locations': [],
+            'products': [],
+            'events': [],
             'email_addresses': self._extract_emails(content),
             'phone_numbers': self._extract_phone_numbers(content),
             'urls': self._extract_urls(content)
         }
-        
+
+        if self.nlp:
+            doc = self.nlp(content)
+            for ent in doc.ents:
+                if ent.label_ == "DATE":
+                    entities['dates'].append(ent.text)
+                elif ent.label_ == "MONEY":
+                    entities['monetary_amounts'].append(ent.text)
+                elif ent.label_ == "PERCENT":
+                    entities['percentages'].append(ent.text)
+                elif ent.label_ == "ORG":
+                    entities['organizations'].append(ent.text)
+                elif ent.label_ == "PERSON":
+                    entities['persons'].append(ent.text)
+                elif ent.label_ == "GPE" or ent.label_ == "LOC":
+                    entities['locations'].append(ent.text)
+                elif ent.label_ == "PRODUCT":
+                    entities['products'].append(ent.text)
+                elif ent.label_ == "EVENT":
+                    entities['events'].append(ent.text)
+
+        # Fallback to regex for some entities if spacy is not available or misses them
+        if not entities['dates']:
+            entities['dates'] = self._extract_dates(content)
+        if not entities['monetary_amounts']:
+            entities['monetary_amounts'] = self._extract_monetary_amounts(content)
+        if not entities['percentages']:
+            entities['percentages'] = self._extract_percentages(content)
+        if not entities['organizations']:
+            entities['organizations'] = self._extract_organizations(content)
+
+        # Remove duplicates
+        for key in entities:
+            entities[key] = list(set(entities[key]))
+
         return entities
     
     def analyze_content_themes(self, content: str) -> Dict[str, Any]:

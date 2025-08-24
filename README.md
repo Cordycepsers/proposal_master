@@ -81,6 +81,22 @@ An enterprise-grade system that automatically discovers open tenders, analyzes R
    pip install -r requirements.txt
    ```
 
+### Environment Configuration
+
+The system uses a `.env` file to manage API keys and other secrets. To get started, copy the example file:
+
+```bash
+cp .env.example .env
+```
+
+Then, edit the `.env` file and add your API keys. At least one of the following AI provider keys is required for the system to function correctly:
+
+-   `ANTHROPIC_API_KEY`: For using Anthropic's Claude models.
+-   `OPENAI_API_KEY`: For using OpenAI's GPT models.
+-   `PERPLEXITY_API_KEY`: For using Perplexity's models for research.
+
+The other keys listed in the `.env.example` file are optional and can be configured as needed.
+
 2. **Configure API keys**:
    ```bash
    cp .env.example .env

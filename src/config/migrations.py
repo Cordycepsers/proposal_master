@@ -9,9 +9,9 @@ from typing import Optional
 from sqlalchemy import text, inspect
 from sqlalchemy.exc import SQLAlchemyError
 
-from ..config.database import AsyncSessionLocal, engine, Base
+from ..config.database import AsyncSessionLocal, async_engine as engine, Base
 from ..models.core import (
-    TenderOpportunity, Requirement, Proposal, WonBid, ProjectDocumentation
+    TenderOpportunity, Requirement, Proposal, WonBid, ProjectDocumentation, Document
 )
 
 logger = logging.getLogger(__name__)
@@ -27,6 +27,11 @@ class DatabaseMigrator:
     
     async def create_database_if_not_exists(self, database_name: str = "proposal_master") -> bool:
         """Create database if it doesn't exist."""
+        # For SQLite, the database is created automatically on connection if it doesn't exist.
+        if self.engine.url.drivername.startswith('sqlite'):
+            logger.info(f"Using SQLite, database '{database_name}' will be created automatically.")
+            return True
+
         try:
             # Connect to postgres default database to create our database
             temp_engine_url = str(self.engine.url).replace(f"/{database_name}", "/postgres")

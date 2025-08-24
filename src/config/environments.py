@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from pydantic import BaseSettings, validator
+from pydantic_settings import BaseSettings
 
 
 class DatabaseSettings(BaseSettings):
@@ -45,14 +45,7 @@ class DatabaseSettings(BaseSettings):
         env_file = ".env"
         env_prefix = "DB_"
         case_sensitive = False
-    
-    @validator("db_password", pre=True)
-    def validate_password(cls, v):
-        """Ensure password is provided for production."""
-        env = os.getenv("ENVIRONMENT", "development")
-        if env == "production" and not v:
-            raise ValueError("Database password is required for production")
-        return v
+        extra = 'ignore'
     
     @property
     def database_url(self) -> str:
