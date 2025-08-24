@@ -214,6 +214,7 @@ class Proposal(Base):
     
     # Relationships
     opportunity: Mapped["TenderOpportunity"] = relationship("TenderOpportunity", back_populates="proposals")
+    feedback: Mapped[List["Feedback"]] = relationship("Feedback", back_populates="proposal")
 
 
 class WonBid(Base):
@@ -354,3 +355,19 @@ class Document(Base):
     __table_args__ = (
         Index("ix_documents_status_timestamp", "processing_status", "upload_timestamp"),
     )
+
+
+class Feedback(Base):
+    """Model for user feedback on generated content."""
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    proposal_id: Mapped[int] = mapped_column(ForeignKey("proposals.id"), nullable=False, index=True)
+
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)  # e.g., 1-5
+    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    proposal: Mapped["Proposal"] = relationship("Proposal", back_populates="feedback")

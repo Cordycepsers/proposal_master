@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ..config.database import AsyncSessionLocal, async_engine as engine, Base
 from ..models.core import (
-    TenderOpportunity, Requirement, Proposal, WonBid, ProjectDocumentation, Document
+    TenderOpportunity, Requirement, Proposal, WonBid, ProjectDocumentation, Document, Feedback
 )
 
 logger = logging.getLogger(__name__)
