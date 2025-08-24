@@ -1,4 +1,4 @@
-import { BarChart3, Users, TrendingUp, Home } from "lucide-react"
+import { BarChart3, FileText, TrendingUp, Home, Upload } from "lucide-react"
 import { Button } from "./ui/button"
 
 interface DashboardSidebarProps {
@@ -9,8 +9,8 @@ interface DashboardSidebarProps {
 export function DashboardSidebar({ activeSection, onSectionChange }: DashboardSidebarProps) {
   const navItems = [
     { id: 'overview', label: 'Overview', icon: Home },
-    { id: 'projects', label: 'Projects', icon: BarChart3 },
-    { id: 'leads', label: 'Leads', icon: Users },
+    { id: 'projects', label: 'Proposals', icon: BarChart3 },
+    { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'research', label: 'Research', icon: TrendingUp },
   ]
 
@@ -19,10 +19,10 @@ export function DashboardSidebar({ activeSection, onSectionChange }: DashboardSi
       <div className="p-8">
         <div className="mb-8">
           <h2 className="text-sidebar-foreground text-xl font-medium tracking-tight">
-            Business Intelligence
+            Proposal Master
           </h2>
           <p className="text-sidebar-foreground/70 text-sm mt-2">
-            Get real-time insights, seamless transactions, and advanced tools to manage your business effectively
+            AI-powered proposal management system for RFP analysis and response automation
           </p>
         </div>
         

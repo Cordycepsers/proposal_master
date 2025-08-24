@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { DashboardSidebar } from './components/DashboardSidebar'
 import { OverviewSection } from './components/OverviewSection'
-import { ProjectsSection } from './components/ProjectsSection'
-import { LeadsSection } from './components/LeadsSection'
+import { ProposalManagement } from './components/ProposalManagement'
+import { DocumentManagement } from './components/DocumentManagement'
 import { ResearchSection } from './components/ResearchSection'
 
 export default function App() {
@@ -13,9 +13,9 @@ export default function App() {
       case 'overview':
         return <OverviewSection />
       case 'projects':
-        return <ProjectsSection />
-      case 'leads':
-        return <LeadsSection />
+        return <ProposalManagement />
+      case 'documents':
+        return <DocumentManagement />
       case 'research':
         return <ResearchSection />
       default:
@@ -28,9 +28,9 @@ export default function App() {
       case 'overview':
         return 'Dashboard Overview'
       case 'projects':
-        return 'Project Management'
-      case 'leads':
-        return 'Lead Management'
+        return 'Proposal Management'
+      case 'documents':
+        return 'Document Management'
       case 'research':
         return 'Market Research'
       default:
@@ -41,13 +41,13 @@ export default function App() {
   const getSectionDescription = () => {
     switch (activeSection) {
       case 'overview':
-        return 'Get a comprehensive view of your business performance and key metrics'
+        return 'Get a comprehensive view of your proposal system performance and key metrics'
       case 'projects':
-        return 'Track and manage all your active projects in one place'
-      case 'leads':
-        return 'Monitor your sales pipeline and lead conversion rates'
+        return 'Track and manage all your active proposals and RFP responses'
+      case 'documents':
+        return 'Upload, analyze, and manage RFP documents and requirements'
       case 'research':
-        return 'Analyze market trends and identify growth opportunities'
+        return 'Conduct market research and analyze industry trends for better proposals'
       default:
         return 'Get a comprehensive view of your business performance and key metrics'
     }

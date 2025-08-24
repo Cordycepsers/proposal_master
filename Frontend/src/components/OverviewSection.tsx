@@ -3,7 +3,9 @@ import { DashboardChatbot } from "./DashboardChatbot"
 import { RecentActivity } from "./RecentActivity"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts'
-import { FolderOpen, Users, TrendingUp, DollarSign } from "lucide-react"
+import { FolderOpen, Users, TrendingUp, DollarSign, AlertCircle, CheckCircle, Clock } from "lucide-react"
+import { useDocuments, useProposals, useSystemHealth } from "../hooks/useApi"
+import { useEffect, useState } from "react"
 
 const monthlyData = [
   { month: 'Jan', projects: 12, leads: 45, revenue: 85000 },
