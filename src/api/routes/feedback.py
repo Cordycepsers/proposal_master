@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, conint
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +10,7 @@ router = APIRouter()
 
 class FeedbackCreate(BaseModel):
     proposal_id: int
-    rating: int
+    rating: conint(ge=1, le=5)
     comment: Optional[str] = None
 
 class FeedbackResponse(BaseModel):
@@ -40,8 +40,11 @@ async def create_feedback(
         rating=feedback_data.rating,
         comment=feedback_data.comment
     )
-    db.add(new_feedback)
-    await db.commit()
-    await db.refresh(new_feedback)
-
-    return FeedbackResponse.from_orm(new_feedback)
+    try:
+        db.add(new_feedback)
+        await db.commit()
+        await db.refresh(new_feedback)
+        return FeedbackResponse.from_orm(new_feedback)
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create feedback: {e}")

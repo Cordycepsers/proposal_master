@@ -370,4 +370,4 @@ class Feedback(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    proposal: Mapped["Proposal"] = relationship("Proposal")
+    proposal: Mapped["Proposal"] = relationship("Proposal", back_populates="feedback")
