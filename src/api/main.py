@@ -28,7 +28,8 @@ from .routes import (
     research,
     health,
     vector,
-    feedback
+    feedback,
+    reporting
 )
 
 # Initialize logger
@@ -69,6 +70,7 @@ app.include_router(clients.router, prefix="/api/v1/clients", tags=["Client Manag
 app.include_router(research.router, prefix="/api/v1/research", tags=["Research"])
 app.include_router(vector.router, prefix="/api/v1", tags=["Vector Database"])
 app.include_router(feedback.router, prefix="/api/v1/feedback", tags=["Feedback"])
+app.include_router(reporting.router, prefix="/api/v1/reporting", tags=["Reporting"])
 
 # Global exception handler
 @app.exception_handler(Exception)
