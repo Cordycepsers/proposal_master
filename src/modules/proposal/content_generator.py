@@ -11,6 +11,7 @@ import asyncio
 from datetime import datetime
 
 from ...agents.base_agent import BaseAgent
+from ...prompts.proposal_prompts import ProposalPrompts
 import google.generativeai as genai
 from google.generativeai.types import GenerateContentResponse
 from google.generativeai.types import Tool
@@ -123,7 +124,6 @@ class ContentGenerator(BaseAgent):
 
     def configure_gemini(self):
         """Configure the Gemini API key."""
-        print("--- In configure_gemini ---")
         api_key = os.getenv("GOOGLE_API_KEY")
         if not api_key:
             logger.warning("GOOGLE_API_KEY not found. Content generation will use templates.")
@@ -279,23 +279,28 @@ class ContentGenerator(BaseAgent):
         if not self.model:
             return await self._generate_generic_content(section_name, requirements_analysis, client_profile, project_specifications)
 
-        section_title = section_name.replace('_', ' ').title()
-        prompt = f"""
-        As an expert proposal writer, generate the content for the "{section_title}" section of a business proposal.
-
-        **Client Profile:**
-        {client_profile}
-
-        **Project Specifications:**
-        {project_specifications}
-
-        **Requirements Analysis:**
-        {requirements_analysis}
-
-        **Content Style:** {content_style}
-
-        Please generate the content for the "{section_title}" section. The content should be professional, persuasive, and tailored to the provided information.
-        """
+        try:
+            prompt = ProposalPrompts.get_prompt(
+                prompt_type=section_name,
+                rfp_requirements=requirements_analysis,
+                solution_overview=project_specifications,
+                differentiators={}, # Placeholder
+                client_profile=client_profile,
+                win_themes=[], # Placeholder
+                technical_requirements=requirements_analysis.get('requirements', {}).get('technical', []),
+                technical_solution=project_specifications,
+                architecture_overview={}, # Placeholder
+                technology_stack=project_specifications.get('technologies', []),
+                methodology="Agile", # Placeholder
+            )
+        except ValueError:
+            prompt = ProposalPrompts.get_prompt(
+                prompt_type='requirement_response',
+                requirement_section=section_name.replace('_', ' ').title(),
+                requirements_list=[], # Placeholder
+                our_capabilities={}, # Placeholder
+                solution_details=project_specifications
+            )
 
         return await self._generate_with_gemini(prompt)
 

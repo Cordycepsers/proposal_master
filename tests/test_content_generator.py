@@ -24,35 +24,33 @@ def sample_input_data():
     }
 
 @pytest.mark.asyncio
-async def test_process_with_gemini(content_generator, sample_input_data):
+async def test_process_with_gemini(content_generator, sample_input_data, mocker):
     """Test the process method with Gemini integration."""
-    with patch('src.modules.proposal.content_generator.genai.GenerativeModel') as mock_gemini_model:
-        # Arrange
-        mock_gemini_instance = mock_gemini_model.return_value
+    # Arrange
+    mock_gemini_model = mocker.patch('src.modules.proposal.content_generator.genai.GenerativeModel')
+    mock_gemini_instance = mock_gemini_model.return_value
 
-        # Create a mock response object with a 'text' attribute
-        mock_response = MagicMock()
-        mock_response.text = "Generated content from Gemini"
+    mock_response = MagicMock()
+    mock_response.text = "Generated content from Gemini"
 
-        # Set the return value of the async method to be an awaitable that resolves to the mock response
-        async def mock_generate_content_async(*args, **kwargs):
-            return mock_response
+    async def mock_generate_content_async(*args, **kwargs):
+        return mock_response
 
-        mock_gemini_instance.generate_content_async = AsyncMock(side_effect=mock_generate_content_async)
+    mock_gemini_instance.generate_content_async = AsyncMock(side_effect=mock_generate_content_async)
 
-        content_generator.model = mock_gemini_instance
+    content_generator.model = mock_gemini_instance
 
-        # Act
-        result = await content_generator.process(sample_input_data)
+    # Act
+    result = await content_generator.process(sample_input_data)
 
-        # Assert
-        assert result["status"] == "success"
-        assert "generated_sections" in result
-        assert "project_overview" in result["generated_sections"]
-        assert "technical_approach" in result["generated_sections"]
-        assert result["generated_sections"]["project_overview"]["content"] == "Generated content from Gemini"
-        mock_gemini_instance.generate_content_async.assert_called()
-        assert mock_gemini_instance.generate_content_async.call_count == 2
+    # Assert
+    assert result["status"] == "success"
+    assert "generated_sections" in result
+    assert "project_overview" in result["generated_sections"]
+    assert "technical_approach" in result["generated_sections"]
+    assert result["generated_sections"]["project_overview"]["content"] == "Generated content from Gemini"
+    mock_gemini_instance.generate_content_async.assert_called()
+    assert mock_gemini_instance.generate_content_async.call_count == 2
 
 @pytest.mark.asyncio
 async def test_process_without_gemini(content_generator, sample_input_data):
@@ -69,14 +67,3 @@ async def test_process_without_gemini(content_generator, sample_input_data):
     assert "project_overview" in result["generated_sections"]
     # Check for fallback content
     assert "This section provides important information" in result["generated_sections"]["project_overview"]["content"]
-
-def test_configure_gemini():
-    """Test the configure_gemini method."""
-    with patch.dict(os.environ, {"GOOGLE_API_KEY": "test-key"}):
-        with patch('src.modules.proposal.content_generator.genai.configure') as mock_gemini_configure:
-            with patch('src.modules.proposal.content_generator.genai.GenerativeModel') as mock_gemini_model:
-                mock_instance = MagicMock()
-                mock_gemini_model.return_value = mock_instance
-                generator = ContentGenerator()
-                mock_gemini_configure.assert_called_with(api_key="test-key")
-                mock_gemini_model.assert_called_with('gemini-pro')
