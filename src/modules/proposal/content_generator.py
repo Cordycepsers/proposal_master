@@ -12,6 +12,7 @@ from datetime import datetime
 
 from ...agents.base_agent import BaseAgent
 from ...prompts.proposal_prompts import ProposalPrompts
+from ...utils.mock_tools import get_client_details, get_project_details
 import google.generativeai as genai
 from google.generativeai.types import GenerateContentResponse
 from google.generativeai.types import Tool
@@ -121,6 +122,36 @@ class ContentGenerator(BaseAgent):
             'sections_created': 0
         }
         self.model = None
+        self.tools = [
+            Tool(function_declarations=[
+                genai.protos.FunctionDeclaration(
+                    name='get_client_details',
+                    description='Get details about a client from the CRM.',
+                    parameters=genai.protos.Schema(
+                        type=genai.protos.Type.OBJECT,
+                        properties={
+                            'client_name': genai.protos.Schema(type=genai.protos.Type.STRING)
+                        },
+                        required=['client_name']
+                    )
+                ),
+                genai.protos.FunctionDeclaration(
+                    name='get_project_details',
+                    description='Get details about a project from the project management tool.',
+                    parameters=genai.protos.Schema(
+                        type=genai.protos.Type.OBJECT,
+                        properties={
+                            'project_name': genai.protos.Schema(type=genai.protos.Type.STRING)
+                        },
+                        required=['project_name']
+                    )
+                )
+            ])
+        ]
+        self.tool_functions = {
+            "get_client_details": get_client_details,
+            "get_project_details": get_project_details,
+        }
 
     def configure_gemini(self):
         """Configure the Gemini API key."""
@@ -141,7 +172,33 @@ class ContentGenerator(BaseAgent):
                 top_p=1.0,
                 top_k=40,
             )
-            response = await self.model.generate_content_async(prompt, generation_config=generation_config)
+            response = await self.model.generate_content_async(
+                prompt,
+                generation_config=generation_config,
+                tools=self.tools
+            )
+
+            if response.candidates[0].content.parts[0].function_call:
+                function_call = response.candidates[0].content.parts[0].function_call
+                function_name = function_call.name
+                function_args = function_call.args
+
+                if function_name in self.tool_functions:
+                    function_response = self.tool_functions[function_name](**function_args)
+
+                    response = await self.model.generate_content_async(
+                        [
+                            prompt,
+                            response.candidates[0].content,
+                            genai.protos.Part(
+                                function_response=genai.protos.FunctionResponse(
+                                    name=function_name,
+                                    response={"result": function_response},
+                                )
+                            ),
+                        ]
+                    )
+
             return response.text
         except Exception as e:
             logger.error(f"Error generating content with Gemini: {e}")
