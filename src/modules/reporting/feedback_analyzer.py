@@ -29,8 +29,8 @@ class FeedbackAnalyzer:
         rating_distribution = Counter(f.rating for f in feedback_list)
 
         # Simple keyword analysis from comments
-        all_comments = " ".join(f.comment for f in feedback_list if f.comment)
-        words = all_comments.lower().split()
+        all_comments = " ".join(f.comment for f in feedback_list if isinstance(f.comment, str) and f.comment)
+        words = all_comments.lower().split() if all_comments else []
         common_keywords = Counter(w for w in words if len(w) > 3).most_common(10)
 
         return {
