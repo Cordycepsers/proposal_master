@@ -8,6 +8,8 @@ and other business documents.
 from typing import List, Dict, Any, Optional
 import logging
 from pathlib import Path
+import PyPDF2
+import docx
 
 logger = logging.getLogger(__name__)
 
@@ -50,14 +52,20 @@ class DocumentProcessor:
     
     def _extract_content(self, file_path: Path) -> str:
         """Extract text content from document."""
-        # Placeholder implementation
-        if file_path.suffix.lower() == '.txt':
+        extension = file_path.suffix.lower()
+        if extension == '.txt':
             return file_path.read_text(encoding='utf-8')
-        elif file_path.suffix.lower() == '.md':
+        elif extension == '.md':
             return file_path.read_text(encoding='utf-8')
+        elif extension == '.pdf':
+            with open(file_path, 'rb') as f:
+                reader = PyPDF2.PdfReader(f)
+                return "".join(page.extract_text() for page in reader.pages)
+        elif extension == '.docx':
+            doc = docx.Document(file_path)
+            return "\n".join(para.text for para in doc.paragraphs)
         else:
-            # For PDF and DOCX, would need specialized libraries
-            return f"Content extraction for {file_path.suffix} format - TODO: Implement"
+            raise ValueError(f"Unsupported format: {extension}")
     
     def _extract_metadata(self, file_path: Path) -> Dict[str, Any]:
         """Extract metadata from document."""

@@ -14,7 +14,7 @@ class ProxyManager:
     
     def get_random_proxy(self) -> Optional[Dict[str, str]]:
         """Get a random working proxy from the pool"""
-        available_proxies = [p for p in self.proxies if p not in self.failed_proxies]
+        available_proxies = [p for p in self.proxies if p['http'] not in self.failed_proxies]
         
         if not available_proxies:
             # Reset failed proxies if all are down
@@ -36,7 +36,8 @@ class ProxyManager:
     
     def mark_proxy_as_failed(self, proxy: Dict[str, str]):
         """Mark a proxy as failed"""
-        self.failed_proxies.add(proxy)
+        if 'http' in proxy:
+            self.failed_proxies.add(proxy['http'])
     
     def is_proxy_working(self, proxy: Dict[str, str]) -> bool:
         """Test if a proxy is working"""

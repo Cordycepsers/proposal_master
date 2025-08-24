@@ -1,67 +1,89 @@
-# tests/test_document_processing.py
 import pytest
-from unittest.mock import Mock, patch
-from src.modules.research.document_processor import DocumentProcessor
-from src.anti_scraping.request_handler import RequestHandler
+from pathlib import Path
+from src.core.document_processor import DocumentProcessor
 
-class TestDocumentProcessor:
-    
-    def setup_method(self):
-        """Setup test fixtures"""
-        self.processor = DocumentProcessor()
-        self.sample_document = {
-            "title": "Project Requirements",
-            "content": "This project requires development of a web application with user authentication, database integration, and mobile responsiveness. The budget is $50,000 and deadline is 3 months.",
-            "requirements": ["web application", "user authentication", "database"],
-            "client_info": {"name": "Acme Corp", "industry": "Technology"}
-        }
-    
-    def test_document_parsing(self):
-        """Test document parsing functionality"""
-        # Test basic parsing
-        result = self.processor.parse_document(self.sample_document)
-        
-        assert result is not None
-        assert 'title' in result
-        assert 'requirements' in result
-        assert 'client_info' in result
-        
-    def test_requirement_extraction(self):
-        """Test requirement extraction from document"""
-        requirements = self.processor.extract_requirements(self.sample_document['content'])
-        
-        assert isinstance(requirements, list)
-        assert len(requirements) > 0
-        assert 'web application' in requirements
-        assert 'user authentication' in requirements
-    
-    def test_client_info_extraction(self):
-        """Test client information extraction"""
-        client_data = self.processor.extract_client_info(self.sample_document['content'])
-        
-        assert isinstance(client_data, dict)
-        assert 'name' in client_data
-        assert 'industry' in client_data
-        assert client_data['name'] == 'Acme Corp'
-    
-    def test_project_type_classification(self):
-        """Test project type classification"""
-        project_type = self.processor.classify_project_type(self.sample_document['content'])
-        
-        assert isinstance(project_type, str)
-        assert len(project_type) > 0
-    
-    @patch('src.anti_scraping.request_handler.RequestHandler.make_request')
-    def test_document_analysis_with_anti_scraping(self, mock_request):
-        """Test document analysis with anti-scraping measures"""
-        # Mock successful request
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.text = "Sample competitive analysis data"
-        mock_request.return_value = mock_response
-        
-        result = self.processor.analyze_document_with_research(self.sample_document)
-        
-        assert result is not None
-        assert 'research_data' in result
-        mock_request.assert_called_once()
+@pytest.fixture
+def temp_test_dir(tmp_path):
+    """Create a temporary directory for test files."""
+    return tmp_path
+
+@pytest.fixture
+def txt_file(temp_test_dir):
+    """Create a sample .txt file."""
+    file_path = temp_test_dir / "test.txt"
+    file_path.write_text("This is a test text file.", encoding="utf-8")
+    return file_path
+
+@pytest.fixture
+def md_file(temp_test_dir):
+    """Create a sample .md file."""
+    file_path = temp_test_dir / "test.md"
+    file_path.write_text("# Markdown Test\n\nThis is a test markdown file.", encoding="utf-8")
+    return file_path
+
+@pytest.fixture
+def unsupported_file(temp_test_dir):
+    """Create an unsupported file type."""
+    file_path = temp_test_dir / "test.xyz"
+    file_path.write_text("This is an unsupported file.", encoding="utf-8")
+    return file_path
+
+def test_process_txt_document(txt_file):
+    """Test processing a .txt document."""
+    processor = DocumentProcessor()
+    result = processor.process_document(txt_file)
+
+    assert isinstance(result, dict)
+    assert result['file_name'] == "test.txt"
+    assert result['format'] == ".txt"
+    assert result['content'] == "This is a test text file."
+    assert "created" in result["metadata"]
+    assert "modified" in result["metadata"]
+
+def test_process_md_document(md_file):
+    """Test processing a .md document."""
+    processor = DocumentProcessor()
+    result = processor.process_document(md_file)
+
+    assert isinstance(result, dict)
+    assert result['file_name'] == "test.md"
+    assert result['format'] == ".md"
+    assert result['content'] == "# Markdown Test\n\nThis is a test markdown file."
+
+def test_process_unsupported_document(unsupported_file):
+    """Test processing an unsupported document type."""
+    processor = DocumentProcessor()
+    with pytest.raises(ValueError, match="Unsupported format: .xyz"):
+        processor.process_document(unsupported_file)
+
+def test_process_non_existent_document(temp_test_dir):
+    """Test processing a non-existent document."""
+    processor = DocumentProcessor()
+    non_existent_file = temp_test_dir / "non_existent.txt"
+    with pytest.raises(FileNotFoundError, match=f"Document not found: {non_existent_file}"):
+        processor.process_document(non_existent_file)
+
+def test_batch_process(txt_file, md_file):
+    """Test batch processing of documents."""
+    processor = DocumentProcessor()
+    results = processor.batch_process([txt_file, md_file])
+
+    assert isinstance(results, list)
+    assert len(results) == 2
+    assert results[0]['file_name'] == "test.txt"
+    assert results[1]['file_name'] == "test.md"
+
+def test_batch_process_with_errors(txt_file, unsupported_file, temp_test_dir):
+    """Test batch processing with some files causing errors."""
+    processor = DocumentProcessor()
+    non_existent_file = temp_test_dir / "non_existent.txt"
+    results = processor.batch_process([txt_file, unsupported_file, non_existent_file])
+
+    assert isinstance(results, list)
+    assert len(results) == 3
+    assert results[0]['file_name'] == "test.txt"
+    assert "error" in results[1]
+    assert "Unsupported format: .xyz" in results[1]['error']
+    assert "error" in results[2]
+    assert f"Document not found: {non_existent_file}" in results[2]['error']
+
