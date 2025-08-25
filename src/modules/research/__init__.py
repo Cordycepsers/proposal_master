@@ -5,19 +5,39 @@ Research Module
 This module contains specialized sub-agents for research and competitive intelligence:
 - Literature Searcher: Searches and analyzes relevant industry literature and documentation  
 - Report Generator: Creates comprehensive research reports and summaries
+- Web Researcher: Performs web-based competitive intelligence and market research
+- Organization Researcher: Comprehensive organization profiling and campaign analysis
 """
 
 from .literature_searcher import LiteratureSearcher
 from .report_generator import ReportGenerator
+from .web_researcher import WebResearcher
+from .organization_research import (
+    OrganizationResearcher,
+    OrganizationProfile,
+    CampaignData,
+    SocialMediaMetrics,
+    ResearchResult,
+    WebOrganizationResearcher,
+    SocialMediaResearcher,
+    save_research_result,
+    load_research_result
+)
 
 __all__ = [
     'LiteratureSearcher',
-    'ReportGenerator'
+    'ReportGenerator',
+    'WebResearcher',
+    'OrganizationResearcher',
+    'OrganizationProfile',
+    'CampaignData',
+    'SocialMediaMetrics',
+    'ResearchResult',
+    'WebOrganizationResearcher',
+    'SocialMediaResearcher',
+    'save_research_result',
+    'load_research_result'
 ]
-
-from .web_researcher import WebResearcher
-
-__all__ = ['WebResearcher']
 
 # Version information
 __version__ = '1.0.0'
