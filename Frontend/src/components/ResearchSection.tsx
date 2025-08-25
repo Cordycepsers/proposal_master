@@ -1,7 +1,13 @@
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { MetricCard } from "./MetricCard"
-import { TrendingUp, TrendingDown, Target, Globe } from "lucide-react"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from 'recharts'
+import { Button } from "./ui/button"
+import { Input } from "./ui/input"
+import { Textarea } from "./ui/textarea"
+import { researchService } from '../services'
+import { TrendingUp, TrendingDown, Target, Globe, Search, MessageSquare } from "lucide-react"
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from 'recharts'
+import { toast } from 'sonner'
 
 const marketTrends = [
   { month: 'Jul', webDev: 85, mobileApp: 92, branding: 78, ecommerce: 88 },
@@ -171,7 +177,105 @@ export function ResearchSection() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Research Feedback Section */}
+        <ResearchFeedback />
       </div>
     </div>
+  )
+}
+
+function ResearchFeedback() {
+  const [feedback, setFeedback] = useState('')
+  const [query, setQuery] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmitFeedback = async () => {
+    if (!feedback.trim()) {
+      toast.error('Please enter your feedback')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await researchService.submitFeedback({
+        type: 'general',
+        content: feedback,
+        metadata: { section: 'research' }
+      })
+      toast.success('Feedback submitted successfully')
+      setFeedback('')
+    } catch (error) {
+      toast.error('Failed to submit feedback')
+      console.error('Failed to submit feedback:', error)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleResearchQuery = async () => {
+    if (!query.trim()) {
+      toast.error('Please enter a research query')
+      return
+    }
+
+    try {
+      const results = await researchService.conductResearch(query)
+      if (results) {
+        toast.success(`Research completed: ${results.summary}`)
+        // Could display results in a modal or separate section
+        console.log('Research results:', results)
+      }
+    } catch (error) {
+      toast.error('Research query failed')
+      console.error('Research query failed:', error)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MessageSquare className="h-5 w-5" />
+          Research Tools & Feedback
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Research Query */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Research Query</label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter your research question or topic..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleResearchQuery()}
+            />
+            <Button onClick={handleResearchQuery} disabled={!query.trim()}>
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Feedback Form */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Research Feedback</label>
+          <Textarea
+            placeholder="Share your thoughts on the research data, suggest improvements, or report any issues..."
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            rows={4}
+          />
+          <div className="flex justify-between items-center mt-2">
+            <span className="text-xs text-muted-foreground">
+              Help us improve our research capabilities
+            </span>
+            <Button onClick={handleSubmitFeedback} disabled={submitting || !feedback.trim()}>
+              {submitting ? 'Submitting...' : 'Submit Feedback'}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

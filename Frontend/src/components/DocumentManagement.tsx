@@ -3,78 +3,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Badge } from "./ui/badge"
-import { Progress } from "./ui/progress"
-import { Separator } from "./ui/separator"
+import { FileUpload } from "./FileUpload"
+import { documentService, Document as DocumentType } from '../services'
 import { Upload, FileText, Search, Download, AlertCircle, CheckCircle, Clock, Trash2 } from "lucide-react"
+import { toast } from 'sonner'
 
-// Mock API service (replace with actual API calls)
-const mockApiService = {
-  async getDocuments() {
-    return {
-      data: {
-        documents: [
-          {
-            id: "1",
-            filename: "rfp_proposal_2024.pdf",
-            original_filename: "RFP_Government_Contract_2024.pdf",
-            file_size: 2048576,
-            file_type: "pdf",
-            upload_timestamp: new Date().toISOString(),
-            processing_status: "completed",
-            content_preview: "Request for Proposal for Government IT Services...",
-            page_count: 25,
-            word_count: 5432
-          },
-          {
-            id: "2", 
-            filename: "tech_requirements.docx",
-            original_filename: "Technical_Requirements_Document.docx",
-            file_size: 1024000,
-            file_type: "docx",
-            upload_timestamp: new Date().toISOString(),
-            processing_status: "processing",
-            page_count: 12,
-            word_count: 2876
-          }
-        ],
-        total: 2
-      }
-    }
-  },
+// Define a Document interface compatible with the current component
+interface Document {
+  id: string
+  filename: string
+  original_filename?: string
+  file_size: number
+  file_type: string
+  upload_timestamp: string
+  processing_status: string
+  content_preview?: string
+  page_count?: number
+  word_count?: number
+}
 
-  async uploadDocument(file: File) {
-    return {
-      data: {
-        document_id: Math.random().toString(36),
-        filename: file.name,
-        status: "uploaded",
-        message: "Document uploaded successfully"
-      }
-    }
-  },
-
-  async searchDocuments(query: string) {
-    return {
-      data: {
-        query,
-        results: [
-          {
-            id: "1",
-            content: "This section outlines the technical requirements for the proposed solution...",
-            metadata: { filename: "rfp_proposal_2024.pdf", page: 5 },
-            similarity_score: 0.85
-          }
-        ],
-        total_results: 1
-      }
-    }
-  }
+interface SearchResult {
+  document_id: string
+  relevance_score: number
+  highlighted_content: string
 }
 
 interface Document {
   id: string
   filename: string
-  original_filename: string
+  original_filename?: string
   file_size: number
   file_type: string
   upload_timestamp: string
@@ -87,9 +44,8 @@ interface Document {
 export function DocumentManagement() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
 
   useEffect(() => {
@@ -99,45 +55,87 @@ export function DocumentManagement() {
   const fetchDocuments = async () => {
     setLoading(true)
     try {
-      const response = await mockApiService.getDocuments()
-      if (response.data) {
-        setDocuments(response.data.documents)
-      }
+      const documentsData = await documentService.getDocuments()
+      // Map the service documents to our component interface
+      const mappedDocuments: Document[] = documentsData.map(doc => ({
+        id: doc.id,
+        filename: doc.filename,
+        original_filename: doc.filename,
+        file_size: doc.file_size,
+        file_type: doc.content_type || 'unknown',
+        upload_timestamp: doc.upload_date,
+        processing_status: doc.status,
+        content_preview: undefined,
+        page_count: undefined,
+        word_count: undefined
+      }))
+      setDocuments(mappedDocuments)
     } catch (error) {
+      toast.error('Failed to fetch documents')
       console.error('Failed to fetch documents:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+  const handleUploadSuccess = async (uploadedDocuments: DocumentType[]) => {
+    toast.success(`Successfully uploaded ${uploadedDocuments.length} document(s)`)
+    await fetchDocuments() // Refresh the list
+  }
 
-    setUploading(true)
-    try {
-      await mockApiService.uploadDocument(file)
-      await fetchDocuments() // Refresh the list
-    } catch (error) {
-      console.error('Upload failed:', error)
-    } finally {
-      setUploading(false)
-    }
+  const handleUploadError = (error: string) => {
+    toast.error('Upload failed', { description: error })
   }
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return
+    if (!searchQuery.trim()) {
+      toast.error('Please enter a search query')
+      return
+    }
 
     setSearchLoading(true)
     try {
-      const response = await mockApiService.searchDocuments(searchQuery)
-      if (response.data) {
-        setSearchResults(response.data.results)
-      }
+      // Since we don't have a search endpoint in the service yet, simulate it
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Mock search results for now
+      const mockResults: SearchResult[] = documents
+        .filter(doc => 
+          doc.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          doc.content_preview?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .map(doc => ({
+          document_id: doc.id,
+          relevance_score: Math.random(),
+          highlighted_content: doc.content_preview || `Content from ${doc.filename}`
+        }))
+      
+      setSearchResults(mockResults)
+      toast.success(`Found ${mockResults.length} results`)
     } catch (error) {
+      toast.error('Search failed')
       console.error('Search failed:', error)
     } finally {
       setSearchLoading(false)
+    }
+  }
+
+  const handleDelete = async (documentId: string) => {
+    try {
+      const success = await documentService.deleteDocument(documentId)
+      if (success) {
+        await fetchDocuments()
+      }
+    } catch (error) {
+      console.error('Delete failed:', error)
+    }
+  }
+
+  const handleDownload = async (documentId: string, filename: string) => {
+    try {
+      await documentService.downloadDocument(documentId, filename)
+    } catch (error) {
+      console.error('Download failed:', error)
     }
   }
 
@@ -187,24 +185,13 @@ export function DocumentManagement() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4">
-            <Input
-              type="file"
-              accept=".pdf,.docx,.txt,.md"
-              onChange={handleFileUpload}
-              disabled={uploading}
-              className="flex-1"
-            />
-            {uploading && (
-              <div className="flex items-center gap-2">
-                <Progress value={65} className="w-32" />
-                <span className="text-sm text-muted-foreground">Uploading...</span>
-              </div>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            Supported formats: PDF, DOCX, TXT, MD (Max size: 50MB)
-          </p>
+          <FileUpload
+            onUploadSuccess={handleUploadSuccess}
+            onUploadError={handleUploadError}
+            acceptedFileTypes={['.pdf', '.docx', '.txt', '.md']}
+            maxSize={50 * 1024 * 1024} // 50MB
+            maxFiles={10}
+          />
         </CardContent>
       </Card>
 
@@ -235,13 +222,13 @@ export function DocumentManagement() {
               <h4 className="font-medium">Search Results:</h4>
               {searchResults.map((result, index) => (
                 <div key={index} className="p-3 border rounded-lg">
-                  <p className="text-sm">{result.content}</p>
+                  <p className="text-sm">{result.highlighted_content}</p>
                   <div className="flex justify-between items-center mt-2">
                     <span className="text-xs text-muted-foreground">
-                      {result.metadata.filename} - Page {result.metadata.page}
+                      Document ID: {result.document_id}
                     </span>
                     <Badge variant="outline">
-                      {Math.round(result.similarity_score * 100)}% match
+                      {Math.round(result.relevance_score * 100)}% match
                     </Badge>
                   </div>
                 </div>
@@ -301,10 +288,19 @@ export function DocumentManagement() {
                     </div>
 
                     <div className="flex gap-2 ml-4">
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDownload(doc.id, doc.filename)}
+                      >
                         <Download className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => handleDelete(doc.id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

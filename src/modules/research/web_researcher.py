@@ -46,9 +46,9 @@ class WebResearcher:
         Initialize the WebResearcher with anti-scraping configuration.
         
         Args:
-            config: Optional anti-scraping configuration
+            config: Optional anti-scraping configuration (currently not used)
         """
-        self.request_handler = RequestHandler(config=config)
+        self.request_handler = RequestHandler()  # RequestHandler doesn't take config parameter
         self.cache: Dict[str, Any] = {}
         self.cache_ttl = 3600  # 1 hour cache TTL
         

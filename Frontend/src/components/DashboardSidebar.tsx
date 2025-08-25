@@ -1,13 +1,14 @@
 import { BarChart3, FileText, TrendingUp, Home, Upload } from "lucide-react"
 import { Button } from "./ui/button"
+import { SectionType } from "../contexts/AppContext"
 
 interface DashboardSidebarProps {
-  activeSection: string
-  onSectionChange: (section: string) => void
+  activeSection: SectionType
+  onSectionChange: (section: SectionType) => void
 }
 
 export function DashboardSidebar({ activeSection, onSectionChange }: DashboardSidebarProps) {
-  const navItems = [
+  const navItems: Array<{ id: SectionType; label: string; icon: any }> = [
     { id: 'overview', label: 'Overview', icon: Home },
     { id: 'projects', label: 'Proposals', icon: BarChart3 },
     { id: 'documents', label: 'Documents', icon: FileText },
