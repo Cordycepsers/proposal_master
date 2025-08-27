@@ -114,21 +114,31 @@ instance = gcp.compute.Instance(
     allow_stopping_for_update=True,
 )
 
-# Create a firewall rule to allow necessary traffic
-firewall = gcp.compute.Firewall(
-    "allow-k3s-traffic",
+# Create a firewall rule to allow HTTP, HTTPS, and Kubernetes API traffic from anywhere
+firewall_public = gcp.compute.Firewall(
+    "allow-k3s-public-traffic",
     network="default",
     allows=[
-        gcp.compute.FirewallAllowArgs(protocol="tcp", ports=["22"]),  # SSH
         gcp.compute.FirewallAllowArgs(protocol="tcp", ports=["80"]),  # HTTP
         gcp.compute.FirewallAllowArgs(protocol="tcp", ports=["443"]), # HTTPS
-        gcp.compute.FirewallAllowArgs(protocol="tcp", ports=["6443"]),# Kubernetes API Server
+        gcp.compute.FirewallAllowArgs(protocol="tcp", ports=["6443"]),# Kubernetes API Server (consider restricting if not needed)
     ],
     source_ranges=["0.0.0.0/0"],
     target_tags=["k3s-server"], # Apply rule only to our instance
     project=gcp_project,
 )
 
+# Create a firewall rule to allow SSH only from a trusted IP range (replace with your actual IP/CIDR)
+firewall_ssh = gcp.compute.Firewall(
+    "allow-k3s-ssh",
+    network="default",
+    allows=[
+        gcp.compute.FirewallAllowArgs(protocol="tcp", ports=["22"]),  # SSH
+    ],
+    source_ranges=["203.0.113.0/24"],  # <-- Replace with your trusted IP range
+    target_tags=["k3s-server"],
+    project=gcp_project,
+)
 # Export the instance's external IP address and name
 pulumi.export("instance_name", instance.name)
 pulumi.export("instance_ip", instance.network_interfaces[0].access_configs[0].nat_ip)
