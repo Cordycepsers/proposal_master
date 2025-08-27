@@ -220,7 +220,7 @@ Once the Kubernetes pods are running, you can access the application in your bro
 -   **Frontend UI**: `http://<INSTANCE_IP>/`
 -   **Backend API**: `http://<INSTANCE_IP>/api/` (e.g., `http://<INSTANCE_IP>/api/v1/health`)
 
-The Traefik Ingress controller will automatically route requests to the correct service.
+The NGINX Ingress controller will automatically route requests to the correct service.
 
 ## 📁 Project Structure
 
