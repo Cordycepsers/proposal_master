@@ -1,0 +1,170 @@
+# k8s.yml - Kubernetes manifests for the Proposal Master application
+
+# 1. Namespace
+# Isolates the application components within the Kubernetes cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: proposal-master-dev
+
+---
+
+# 2. Backend API Deployment
+# Manages the pods for the backend FastAPI application.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: proposal-master-dev
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        # IMPORTANT: Replace this with your actual image repository and tag.
+        # Example: gcr.io/my-project/proposal-master-backend:v1.0
+        image: your-registry/proposal-master-backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        # Resource requests and limits are crucial for scheduling and stability.
+        # These values are a starting point and may need tuning.
+        resources:
+          requests:
+            memory: "2Gi" # Recommended RAM for ML models
+            cpu: "500m"   # 0.5 vCPU
+          limits:
+            memory: "6Gi"
+            cpu: "1500m"  # 1.5 vCPU
+
+---
+
+# 3. Backend Service
+# Exposes the backend deployment internally within the cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: proposal-master-dev
+spec:
+  selector:
+    app: backend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 8000
+  type: ClusterIP
+
+---
+
+# 4. Frontend Deployment
+# Manages the pods for the Nginx server that serves the static frontend assets.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: proposal-master-dev
+  labels:
+    app: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        # IMPORTANT: Replace this with your actual image repository and tag.
+        # Example: gcr.io/my-project/proposal-master-frontend:v1.0
+        image: your-registry/proposal-master-frontend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "250m"
+
+---
+
+# 5. Frontend Service
+# Exposes the frontend deployment internally within the cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: proposal-master-dev
+spec:
+  selector:
+    app: frontend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 80
+  type: ClusterIP
+
+---
+
+# 6. Traefik Middleware for Stripping API Prefix
+# This middleware removes the '/api' prefix from requests before forwarding them to the backend.
+# This allows the backend application to not have to know about the '/api' base path.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-api-prefix
+  namespace: proposal-master-dev
+spec:
+  stripPrefix:
+    prefixes:
+      - /api
+
+---
+
+# 7. Ingress
+# Manages external access to the services, routing traffic based on the path.
+# It uses the Traefik ingress controller that comes with k3s.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-ingress
+  namespace: proposal-master-dev
+  annotations:
+    # This annotation tells Traefik to use the middleware we defined above.
+    # The format is <middleware-name>@kubernetescrd
+    traefik.ingress.kubernetes.io/router.middlewares: strip-api-prefix@kubernetescrd
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              name: http
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              name: http

@@ -1,0 +1,109 @@
+import pulumi
+import pulumi_gcp as gcp
+import os
+
+# Note to the user: The instance type is set to 'e2-standard-2' instead of 'e2-micro'
+# because the application's README recommends at least 8GB of RAM for the ML models.
+# 'e2-micro' only provides 1GB of RAM, which would likely cause performance issues or failures.
+pulumi.log.info("Using 'e2-standard-2' instance type for adequate performance based on project requirements.")
+
+# Get the GCP project and region from Pulumi config.
+# Ensure you have run `pulumi config set gcp:project YOUR_PROJECT_ID` and `pulumi config set gcp:region YOUR_REGION`
+config = pulumi.Config()
+gcp_project = gcp.config.project
+gcp_region = gcp.config.region
+
+if not gcp_project or not gcp_region:
+    raise pulumi.RunError("GCP project and region must be set in Pulumi config. \n"
+                           "Run `pulumi config set gcp:project YOUR_PROJECT_ID` and "
+                           "`pulumi config set gcp:region YOUR_REGION`.")
+
+# Define the startup script to install Docker and k3s
+startup_script = """#!/bin/bash
+set -e
+# Log everything to a file
+exec > >(tee /var/log/startup-script.log|logger -t startup-script -s 2>/dev/console) 2>&1
+
+echo "Starting startup script..."
+
+# Wait for network to be ready
+until ping -c1 google.com &>/dev/null; do
+  echo "Waiting for network..."
+  sleep 1
+done
+
+# Install Docker
+echo "Installing Docker..."
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+usermod -aG docker ubuntu
+
+# Install k3s
+echo "Installing k3s..."
+curl -sfL https://get.k3s.io | sh -s - --docker
+
+# Create a kubeconfig file that's accessible by the ubuntu user
+echo "Creating kubeconfig..."
+mkdir -p /home/ubuntu/.kube
+cp /etc/rancher/k3s/k3s.yaml /home/ubuntu/.kube/config
+chown -R ubuntu:ubuntu /home/ubuntu/.kube
+chmod 600 /home/ubuntu/.kube/config
+
+echo "Startup script finished."
+"""
+
+# Read the public SSH key from the user's home directory
+ssh_key_path = os.path.expanduser("~/.ssh/id_rsa.pub")
+ssh_key = ""
+try:
+    with open(ssh_key_path, 'r') as f:
+        ssh_key = f.read()
+except FileNotFoundError:
+    pulumi.log.warn(f"SSH public key not found at {ssh_key_path}. The VM will be created without a pre-configured SSH key. You may need to add one manually.")
+
+# Create a GCP compute instance
+instance = gcp.compute.Instance(
+    "k3s-server",
+    machine_type="e2-standard-2",
+    boot_disk=gcp.compute.InstanceBootDiskArgs(
+        initialize_params=gcp.compute.InstanceBootDiskInitializeParamsArgs(
+            image="ubuntu-os-cloud/ubuntu-2404-lts",
+            size=50, # Increase disk size for containers and images
+        )
+    ),
+    network_interfaces=[gcp.compute.InstanceNetworkInterfaceArgs(
+        network="default",
+        access_configs=[gcp.compute.InstanceNetworkInterfaceAccessConfigArgs()],
+    )],
+    metadata={
+        "startup-script": startup_script,
+        "ssh-keys": f"ubuntu:{ssh_key}" if ssh_key else None,
+    },
+    tags=["web", "k3s-server"],
+    project=gcp_project,
+    # Select a zone within the configured region
+    zone=pulumi.Output.from_input(gcp_region).apply(lambda r: r + "-a"),
+    service_account=gcp.compute.InstanceServiceAccountArgs(
+        scopes=["https://www.googleapis.com/auth/cloud-platform"],
+    ),
+    allow_stopping_for_update=True,
+)
+
+# Create a firewall rule to allow necessary traffic
+firewall = gcp.compute.Firewall(
+    "allow-k3s-traffic",
+    network="default",
+    allows=[
+        gcp.compute.FirewallAllowArgs(protocol="tcp", ports=["22"]),  # SSH
+        gcp.compute.FirewallAllowArgs(protocol="tcp", ports=["80"]),  # HTTP
+        gcp.compute.FirewallAllowArgs(protocol="tcp", ports=["443"]), # HTTPS
+        gcp.compute.FirewallAllowArgs(protocol="tcp", ports=["6443"]),# Kubernetes API Server
+    ],
+    source_ranges=["0.0.0.0/0"],
+    target_tags=["k3s-server"], # Apply rule only to our instance
+    project=gcp_project,
+)
+
+# Export the instance's external IP address and name
+pulumi.export("instance_name", instance.name)
+pulumi.export("instance_ip", instance.network_interfaces[0].access_configs[0].nat_ip)

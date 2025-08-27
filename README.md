@@ -134,6 +134,94 @@ taskmaster generate-proposal --tender-id="TID001"   # Create proposal
 taskmaster submit-bid --tender-id="TID001"          # Automated submission
 ```
 
+## ☁️ Cloud Deployment (GCP & Kubernetes)
+
+This section details how to deploy the Proposal Master system to a Google Cloud Platform (GCP) environment using Pulumi for infrastructure management and Kubernetes (k3s) for container orchestration.
+
+### Prerequisites
+
+-   **Google Cloud SDK (`gcloud`)**: Installed and authenticated.
+-   **Pulumi CLI**: Installed.
+-   **Docker**: Installed locally for building container images.
+-   **A Docker/Container Registry**: Such as Google Container Registry (GCR) or Docker Hub, to store your built images.
+-   **SSH Key**: An SSH public key located at `~/.ssh/id_rsa.pub`.
+
+### 1. Infrastructure Deployment with Pulumi
+
+The infrastructure is defined in `__main__.py` and managed by Pulumi. It creates a GCP Compute Engine instance and configures it with Docker and k3s.
+
+1.  **Configure Pulumi for GCP**:
+    Set your GCP project and region for Pulumi.
+
+    ```bash
+    pulumi config set gcp:project YOUR_GCP_PROJECT_ID
+    pulumi config set gcp:region YOUR_GCP_REGION
+    ```
+
+2.  **Deploy the Infrastructure**:
+    Run `pulumi up` to preview and deploy the resources.
+
+    ```bash
+    pulumi up
+    ```
+
+    After a successful deployment, Pulumi will output the `instance_ip` of your new server.
+
+### 2. Build and Push Container Images
+
+The application is split into two containers: one for the backend and one for the frontend.
+
+1.  **Build the Backend Image**:
+
+    ```bash
+    docker build -f Dockerfile.backend -t YOUR_REGISTRY/proposal-master-backend:latest .
+    ```
+
+2.  **Build the Frontend Image**:
+
+    ```bash
+    docker build -f Dockerfile.frontend -t YOUR_REGISTRY/proposal-master-frontend:latest .
+    ```
+
+3.  **Push the Images to Your Registry**:
+
+    ```bash
+    docker push YOUR_REGISTRY/proposal-master-backend:latest
+    docker push YOUR_REGISTRY/proposal-master-frontend:latest
+    ```
+
+    **Note**: Remember to replace `YOUR_REGISTRY` with your container registry's path (e.g., `gcr.io/your-gcp-project-id`).
+
+### 3. Deploy Application to Kubernetes
+
+1.  **Update Image Names in `k8s.yml`**:
+    Open the `k8s.yml` file and replace the placeholder image names (`your-registry/proposal-master-backend:latest` and `your-registry/proposal-master-frontend:latest`) with the actual image paths from the previous step.
+
+2.  **Connect to the Server**:
+    SSH into the newly created GCP instance.
+
+    ```bash
+    ssh ubuntu@<INSTANCE_IP>
+    ```
+
+3.  **Apply Kubernetes Manifests**:
+    Once on the server, you can apply the Kubernetes configuration. The `k8s.yml` file will need to be copied to the server or made available. For simplicity, you can copy its content and create it on the server.
+
+    ```bash
+    # On the GCP instance
+    kubectl apply -f /path/to/your/k8s.yml
+    ```
+    *A simpler alternative is to use the k3s kubeconfig on your local machine to deploy remotely.*
+
+### 4. Access the Application
+
+Once the Kubernetes pods are running, you can access the application in your browser using the server's IP address.
+
+-   **Frontend UI**: `http://<INSTANCE_IP>/`
+-   **Backend API**: `http://<INSTANCE_IP>/api/` (e.g., `http://<INSTANCE_IP>/api/v1/health`)
+
+The Traefik Ingress controller will automatically route requests to the correct service.
+
 ## 📁 Project Structure
 
 ```
