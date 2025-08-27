@@ -28,6 +28,7 @@ spec:
       labels:
         app: backend
     spec:
+      automountServiceAccountToken: false
       containers:
       - name: backend
         # IMPORTANT: Replace this with your actual image repository and tag.
@@ -36,8 +37,30 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 8000
-        # Resource requests and limits are crucial for scheduling and stability.
-        # These values are a starting point and may need tuning.
+        securityContext:
+          runAsUser: 1001
+          runAsGroup: 1001
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        # Health probes ensure Kubernetes can manage the pod's lifecycle correctly.
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
         resources:
           requests:
             memory: "2Gi" # Recommended RAM for ML models
@@ -61,7 +84,7 @@ spec:
   ports:
   - name: http
     protocol: TCP
-    port: 80
+    port: 8000 # Service port now matches targetPort for clarity
     targetPort: 8000
   type: ClusterIP
 
@@ -86,6 +109,7 @@ spec:
       labels:
         app: frontend
     spec:
+      automountServiceAccountToken: false
       containers:
       - name: frontend
         # IMPORTANT: Replace this with your actual image repository and tag.
@@ -94,6 +118,23 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 80
+        securityContext:
+          runAsUser: 1000 # Nginx standard user
+          runAsGroup: 1000
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        readinessProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
         resources:
           requests:
             memory: "64Mi"
@@ -123,44 +164,27 @@ spec:
 
 ---
 
-# 6. Traefik Middleware for Stripping API Prefix
-# This middleware removes the '/api' prefix from requests before forwarding them to the backend.
-# This allows the backend application to not have to know about the '/api' base path.
-apiVersion: traefik.io/v1alpha1
-kind: Middleware
-metadata:
-  name: strip-api-prefix
-  namespace: proposal-master-dev
-spec:
-  stripPrefix:
-    prefixes:
-      - /api
-
----
-
-# 7. Ingress
+# 6. Ingress
 # Manages external access to the services, routing traffic based on the path.
-# It uses the Traefik ingress controller that comes with k3s.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: main-ingress
   namespace: proposal-master-dev
   annotations:
-    # This annotation tells Traefik to use the middleware we defined above.
-    # The format is <middleware-name>@kubernetescrd
-    traefik.ingress.kubernetes.io/router.middlewares: strip-api-prefix@kubernetescrd
+    # Annotation to ensure proper routing with path prefixes
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
 spec:
   rules:
   - http:
       paths:
-      - path: /api
+      - path: /api(/|$)(.*)
         pathType: Prefix
         backend:
           service:
             name: backend-service
             port:
-              name: http
+              number: 8000 # Target the backend service port
       - path: /
         pathType: Prefix
         backend:

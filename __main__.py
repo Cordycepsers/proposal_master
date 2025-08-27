@@ -18,6 +18,28 @@ if not gcp_project or not gcp_region:
                            "Run `pulumi config set gcp:project YOUR_PROJECT_ID` and "
                            "`pulumi config set gcp:region YOUR_REGION`.")
 
+# Create a dedicated service account for the VM to follow principle of least privilege
+instance_service_account = gcp.serviceaccount.Account("k3s-server-sa",
+    account_id="k3s-server-sa",
+    display_name="Service Account for K3s Server VM",
+    project=gcp_project)
+
+# Grant the service account the necessary roles for operation
+project_iam_bindings = [
+    gcp.projects.IAMMember(f"log-writer-binding",
+        project=gcp_project,
+        role="roles/logging.logWriter",
+        member=pulumi.Output.concat("serviceAccount:", instance_service_account.email)),
+    gcp.projects.IAMMember(f"metric-writer-binding",
+        project=gcp_project,
+        role="roles/monitoring.metricWriter",
+        member=pulumi.Output.concat("serviceAccount:", instance_service_account.email)),
+    gcp.projects.IAMMember(f"gcr-puller-binding",
+        project=gcp_project,
+        role="roles/storage.objectViewer", # Required to pull images from GCR
+        member=pulumi.Output.concat("serviceAccount:", instance_service_account.email)),
+]
+
 # Define the startup script to install Docker and k3s
 startup_script = """#!/bin/bash
 set -e
@@ -84,6 +106,7 @@ instance = gcp.compute.Instance(
     # Select a zone within the configured region
     zone=pulumi.Output.from_input(gcp_region).apply(lambda r: r + "-a"),
     service_account=gcp.compute.InstanceServiceAccountArgs(
+        email=instance_service_account.email,
         scopes=["https://www.googleapis.com/auth/cloud-platform"],
     ),
     allow_stopping_for_update=True,
