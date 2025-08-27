@@ -99,7 +99,9 @@ instance = gcp.compute.Instance(
     )],
     metadata={
         "startup-script": startup_script,
-        "ssh-keys": f"ubuntu:{ssh_key}" if ssh_key else None,
+    } if not ssh_key else {
+        "startup-script": startup_script,
+        "ssh-keys": f"ubuntu:{ssh_key}",
     },
     tags=["web", "k3s-server"],
     project=gcp_project,
