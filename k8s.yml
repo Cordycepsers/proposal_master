@@ -172,8 +172,8 @@ metadata:
   name: main-ingress
   namespace: proposal-master-dev
   annotations:
-    # Annotation to ensure proper routing with path prefixes
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    # Traefik middleware for path rewriting
+    traefik.ingress.kubernetes.io/router.middlewares: proposal-master-dev-rewrite@kubernetescrd
 spec:
   rules:
   - http:
