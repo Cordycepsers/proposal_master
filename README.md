@@ -25,11 +25,9 @@ An enterprise-grade system that automatically discovers open tenders, analyzes R
 
 ## 🏗️ System Architecture
 
-## 🏗️ System Architecture
-
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                      TaskMaster Layer                          │
+│                     ProposalMaster Layer                          │
 │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐   │
 │  │   Task Planning │ │   Orchestration │ │   Progress      │   │
 │  │   & Breakdown   │ │   & Scheduling  │ │   Tracking      │   │
@@ -106,12 +104,6 @@ The other keys listed in the `.env.example` file are optional and can be configu
    # PERPLEXITY_API_KEY="pplx-..."
    ```
 
-3. **Initialize TaskMaster**:
-   ```bash
-   taskmaster init
-   taskmaster models --setup  # Configure AI models interactively
-   ```
-
 ### Running the System
 
 **Start the API Server**:
@@ -126,14 +118,6 @@ python start_api.py
 python main.py
 ```
 
-**Automated RFP Commands**:
-```bash
-taskmaster tender-scan --portals="UNGM,UN-Global"   # Discover open tenders
-taskmaster analyze-rfp --tender-id="TID001"         # Extract requirements
-taskmaster generate-proposal --tender-id="TID001"   # Create proposal
-taskmaster submit-bid --tender-id="TID001"          # Automated submission
-```
-
 ## ☁️ Cloud Deployment (GCP & Kubernetes)
 
 This section details how to deploy the Proposal Master system to a Google Cloud Platform (GCP) environment using Pulumi for infrastructure management and Kubernetes (k3s) for container orchestration.
@@ -143,7 +127,7 @@ This section details how to deploy the Proposal Master system to a Google Cloud 
 -   **Google Cloud SDK (`gcloud`)**: Installed and authenticated.
 -   **Pulumi CLI**: Installed.
 -   **Docker**: Installed locally for building container images.
--   **A Docker/Container Registry**: Such as Google Container Registry (GCR) or Docker Hub, to store your built images.
+-   **A Docker/Container Registry**: Such as Google Container Registry (GCR) or Docker Hub, to store built images.
 -   **SSH Key**: An SSH public key located at `~/.ssh/id_rsa.pub`.
 
 ### 1. Infrastructure Deployment with Pulumi
@@ -209,9 +193,9 @@ The application is split into two containers: one for the backend and one for th
 
     ```bash
     # On the GCP instance
-    kubectl apply -f /path/to/your/k8s.yml
+    kubectl apply -f /path/to/k8s.yml
     ```
-    *A simpler alternative is to use the k3s kubeconfig on your local machine to deploy remotely.*
+    *A simpler alternative is to use the k3s kubeconfig on local machine to deploy remotely.*
 
 ### 4. Access the Application
 
