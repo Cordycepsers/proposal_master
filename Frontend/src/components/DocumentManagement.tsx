@@ -28,18 +28,6 @@ interface SearchResult {
   highlighted_content: string
 }
 
-interface Document {
-  id: string
-  filename: string
-  original_filename?: string
-  file_size: number
-  file_type: string
-  upload_timestamp: string
-  processing_status: string
-  content_preview?: string
-  page_count?: number
-  word_count?: number
-}
 
 export function DocumentManagement() {
   const [documents, setDocuments] = useState<Document[]>([])
