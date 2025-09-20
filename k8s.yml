@@ -1,0 +1,194 @@
+# k8s.yml - Kubernetes manifests for the Proposal Master application
+
+# 1. Namespace
+# Isolates the application components within the Kubernetes cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: proposal-master-dev
+
+---
+
+# 2. Backend API Deployment
+# Manages the pods for the backend FastAPI application.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: proposal-master-dev
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: backend
+        # IMPORTANT: Replace this with your actual image repository and tag.
+        # Example: gcr.io/my-project/proposal-master-backend:v1.0
+        image: your-registry/proposal-master-backend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        securityContext:
+          runAsUser: 1001
+          runAsGroup: 1001
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        # Health probes ensure Kubernetes can manage the pod's lifecycle correctly.
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "2Gi" # Recommended RAM for ML models
+            cpu: "500m"   # 0.5 vCPU
+          limits:
+            memory: "6Gi"
+            cpu: "1500m"  # 1.5 vCPU
+
+---
+
+# 3. Backend Service
+# Exposes the backend deployment internally within the cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: proposal-master-dev
+spec:
+  selector:
+    app: backend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8000 # Service port now matches targetPort for clarity
+    targetPort: 8000
+  type: ClusterIP
+
+---
+
+# 4. Frontend Deployment
+# Manages the pods for the Nginx server that serves the static frontend assets.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: proposal-master-dev
+  labels:
+    app: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - name: frontend
+        # IMPORTANT: Replace this with your actual image repository and tag.
+        # Example: gcr.io/my-project/proposal-master-frontend:v1.0
+        image: your-registry/proposal-master-frontend:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        securityContext:
+          runAsUser: 1000 # Nginx standard user
+          runAsGroup: 1000
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+        readinessProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "250m"
+
+---
+
+# 5. Frontend Service
+# Exposes the frontend deployment internally within the cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: proposal-master-dev
+spec:
+  selector:
+    app: frontend
+  ports:
+  - name: http
+    protocol: TCP
+    port: 80
+    targetPort: 80
+  type: ClusterIP
+
+---
+
+# 6. Ingress
+# Manages external access to the services, routing traffic based on the path.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: main-ingress
+  namespace: proposal-master-dev
+  annotations:
+    # Traefik middleware for path rewriting
+    traefik.ingress.kubernetes.io/router.middlewares: proposal-master-dev-rewrite@kubernetescrd
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /api(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 8000 # Target the backend service port
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              name: http

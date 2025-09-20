@@ -28,7 +28,6 @@ interface SearchResult {
   highlighted_content: string
 }
 
-
 export function DocumentManagement() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
