@@ -25,8 +25,6 @@ An enterprise-grade system that automatically discovers open tenders, analyzes R
 
 ## 🏗️ System Architecture
 
-## 🏗️ System Architecture
-
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                      TaskMaster Layer                          │
