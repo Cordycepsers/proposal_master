@@ -102,3 +102,7 @@ node_modules/
 
 # Uploaded documents
 data/documents/uploads/
+secrets/ 
+browser-profile/ 
+.env 
+data/
