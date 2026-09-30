@@ -44,12 +44,12 @@ load_dotenv()
 # Config
 # ---------------------------------------------------------------------------
 CONFIG = {
-    'email': os.getenv('DEVEX_EMAIL', 'dre@someweb.com'),
-    'password': os.getenv('DEVEX_PASSWORD', 'somepass'),
+    'email': os.getenv('DEVEX_EMAIL', ''),
+    'password': os.getenv('DEVEX_PASSWORD', ''),
     'target_url': os.getenv(
         'DEVEX_TARGET_URL',
         (
-"https://www.devex.com/funding/r?report=tender-870115&query%5B%5D=video%20OR%20photo%20OR%20documentary%20OR%20film*%20OR%20campaign%20OR%20story*&filter%5Btype%5D%5B%5D=tender&filter%5Btype%5D%5B%5D=open_opportunity&filter%5Bstatuses%5D%5B%5D=forecast&filter%5Bstatuses%5D%5B%5D=open&filter%5Bupdated_since%5D=2026-04-21T23%3A51%3A15.474Z&sorting%5Border%5D=desc&sorting%5Bfield%5D=updated_at"
+"https://www.devex.com/funding/r?
         ),
     ),
     'headless': os.getenv('HEADLESS', 'false').lower() == 'true',
